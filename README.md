@@ -3,3 +3,4 @@ Academic project about implementing Soft-Actor Critic on the humanoidstandup pro
 
 Pippo
 Pluto
+Paperino
