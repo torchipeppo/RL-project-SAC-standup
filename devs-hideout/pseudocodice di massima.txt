@@ -1,0 +1,177 @@
+Un paio di note generali prima dello pseudocodice vero e proprio.
+
+Abbiamo due implementazioni da seguire:
+SPINNINGUP
+Pregi: usa l'interfaccia environment di openai gym, è un algoritmo monolitico e quindi facile da seguire
+Difetti: è in tf1 (e c'è una differenza enorme tra tf1 e tf2)
+SOFTLEARNING
+Pregi: è in tf2, è l'implementazione "ufficiale"
+Difetti: usa un'interfaccia propria per gli environment, il codice è sparpagliato in mille moduli
+         (percui, per quanto io sia pienamente a favore di *scrivere* codice modulare, purtroppo risulta in un algoritmo molto più complicato da *leggere* se non conosci la codebase)
+
+Pertanto, credo che potrebbe convenirci seguire spinningup per l'algoritmo generale
+e softlearning per i dettagli implementativi, soprattutto per quanto riguarda la parte di allenamento, che è completamente diversa tra tf1 e tf2.
+
+Come altra nota, sac.py di softlearning implementa una singola operazione di allenamento.
+Il resto dell'algoritmo è in rl_algorithm.py, a cominciare dalla funzione _train
+(non è facile interpretarlo alla prima occhiata, ma non è impossibile).
+
+Detto ciò...
+
+--------
+
+Copiare spinningup r.134~148
+
+Creare 5 reti neurali: q1, q2, policy, q1_targ, q2_targ (come modelli Keras)
+Per la struttura potremmo controllare quelle di spinningup
+( Ripensandoci, credo che almeno la policy valga la pena di farla come [softlearning gaussian_policy]. Basta ricordarsi che "shift" vuol dire media e "scale" deviazione standard. 
+  Il motivo, essenzialmente, è che abbiamo log_prob gratis se usiamo la libreria tensorflow_probability. Se facciamo così, dovremo copiare i biiettori ConditionalShift e ConditionalScale di softlearning. )
+( Quanto invece alle q, le reti di softlearning non hanno nulla di speciale, quindi possiamo seguire un'implementazione arbitraria )
+Notare che q1_targ e q2_targ dovrebbero avere la stessa struttura e gli stessi pesi iniziali di q1 e q2, rispettivamente. Potremmo generarle per copia come in [softlearning r.108~109].
+Dovrebbero bastare delle reti dense perché dal sorgente del nostro environment (specificamente i nomi delle variabili) mi sembra che le osservazioni siano i sensori del robot, e quindi non immagini.
+[https://github.com/openai/gym/blob/master/gym/envs/mujoco/humanoidstandup.py#L10]
+
+Creare il replay buffer
+Credo possiamo implementarlo come [spinningup r.10~38]
+
+( Il setup in [spinningup r.117~121] mi sembra altamente specifico per tf1, per noi che usiamo tf2 buona parte di quelle operazioni andranno spostate nel ciclo interno )
+
+INIZIO LOOP PRINCIPALE
+( memento: il loop è per timestep (o campione). le scansioni in episodi ed epoch sono indipendenti: un'epoch può finire mentre un episodio è in corso, ed esso verrà portato a termine nell'epoch successiva )
+
+Ottieni la prossima azione da eseguire.
+Per i primi passi, questa è casuale.      [spinningup]
+Da un certo punto in poi, usa la policy.
+    (dovrebbe essere sufficiente invocare il modello Keras [softlearning]. Ripensandoci, dipende da come è fatto il modello: se dà in output solo media e std_dev, bisogna anche fare sampling della distribuzione.)
+
+Esegui una azione (env.step)
+
+spinningup r.260
+In realtà, d poi viene usata solo alla r. 263 e alla r.270, dove si annulla la modifica appena fatta,
+quindi si potrebbe pensare di alterare solo il valore che viene passato alla r.263 e lasciare d com'è.
+Soggettivamente, mi sembra più elegante così.
+
+spinningup r.267
+Dicono che è importante, non dimentichiamolo!
+
+Se l'episodio è finito, resetta l'environment [spinningup r.272]
+
+Allena le reti neurali N volte ogni N step
+Bisogna produrre una batch di dati presi dal replay buffer da usare per l'allenamento
+L'allenamento è l'operazione centrale dell'algoritmo, per cui preferisco parlarne in dettaglio più in basso per non inquinare qui
+
+Nell'ultimo timestep di ogni epoch, potremmo voler calcolare e stampare qualche metrica, e fare altre operazioni [spinningup r.289~313] [softlearning rl_algorithm r.191~251]
+
+FINE LOOP PRINCIPALE
+
+env.close()
+
+Fine. La libreria di openai salverà in automatico le registrazioni di alcuni episodi e uno o due file di testo con alcune statistiche.
+
+----------
+
+Ho volutamente ignorato le operazioni di logging e cronometraggio perché in questo momento sto solo delineando l'algoritmo, quindi non mi interessano operazioni satellite come quelle.
+Dovremmo pensare a quali vogliamo, in quale misura, e dove posizionarle, ma non fanno parte dell'algoritmo, quindi qui non le ho messe.
+
+
+
+E ora veniamo alla fase di allenamento.
+
+Si può notare che spinningup se la sbriga in poche righe del loop principale (275~286) perché non fa che richiamare operazioni definite prima del loop principale,
+ma questo è il funzionamento di tf1, quindi noi che usiamo tf2 possiamo ricavare da questo solo alcune formule, al più.
+
+Per implementare in tf2 possiamo seguire softlearning, che dedica l'intero file sac.py all'allenamento.
+Il punto d'ingresso è do_training (r.291).
+
+La procedura generale per allenare una NN per un metodo actor-critic è in questa guida:
+https://www.tensorflow.org/tutorials/reinforcement_learning/actor_critic#4_defining_the_training_step_to_update_parameters
+In pratica, si tratta di calcolare la funzione di cui si vuol fare il gradiente in un blocco "with tf.GradientTape() as ..." e poi usare i metodi gradient e apply_gradients.
+
+Ci sono quattro elementi da allenare:
+ - le q, anche note come "valori" o "critici"
+ - la policy, aka "attore"
+ - (opzionale) alpha, la temperatura (softlearning only). Per quanto mi riguarda, possiamo cominciare con alpha fissa e rimandare l'alpha imparabile a un secondo momento (o rinunciarvi completamente).
+ - le q_targ. queste sono particolari perché si aggiornano non con un gradiente, ma con una media esponenziale.
+
+L'unica operazione che ho trovato complicata da capire è quella che softlearning chiama "actions_and_log_probs",
+specificamente in riferimento alla policy gaussiana [softlearning gaussian_policy], che sospetto sia quella che vorremo usare.
+"Cosa" fa è chiaro: date delle osservazioni, per ciascuna di esse valuta la policy restituisce l'azione risultante e il logaritmo della probabilità di scegliere quell'azione.
+"Come" lo fa, mi è risultato un po' più criptico, quindi lo annoto qui in parte come promemoria per me stesso, in parte perché probabilmente dovremo implementare questo metodo anche noi:
+ # preprocessing che serve solo a derivare batch_size
+ # invoca il modello per ottenere i parametri attualmente imparati della distribuzione gaussiana multivariata parametrica (media e deviazione standard) date le osservazioni
+ # usa i metodi della action_distribution [softlearning gaussian_policy r.28~40] per campionare le azioni dalla gaussiana dati i parametri
+ # ´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´ per calcolare le log_prob delle azioni
+Questo è più o meno quello che dovrà fare quest'operazione.
+Detto ciò...
+
+Allenare le q è relativamente semplice:
+ . calcolo dei q_target, l'unico passo complicato: sta in [softlearning r.146~170,14~34],
+   di fatto si tratta di calcolare actions_and_log_probs per le "nuove osservazioni" dei campioni della batch e applicare le equazioni 3 e 8 dell'articolo
+ . per ciascuna funzione q, si calcolano i valori corrispondenti alle coppie osservazione-azione della batch (basta invocare il modello [softlearning base_value_function r.130])
+ . poi si calcola la perdita di ciascuna coppia...
+ . ...e la perdita media
+ . infine si calcola e applica il gradiente di tale perdita media
+Riferimento: [softlearning sac r.173~206]
+
+Allenare la policy è un'operazione che, una volta compresa actions_and_log_probs, non è molto più complicata dell'allenamento delle q:
+ * actions_and_log_probs delle osservazioni
+ * calcola il valore q corrispondente alle azioni date dalla policy (come minimo dei valori dati da q1 e q2)
+ * calcola la perdita di ciascuna coppia osservazione-azione...
+ * ...e la perdita media
+ * infine calcola e applica il gradiente di tale perdita media
+Riferimento: [softlearning sac r.209-242]
+
+Imparare alpha non sembra troppo difficile, ma ancora, suggerisco di fare innanzitutto un SAC funzionante senza perderci in feature opzionali.
+
+Quanto alle q_targ, i pesi di ciascuna si aggiornano facendo una media esponenziale mobile dei pesi della q corrispondente.
+Le operazioni precise per calcolare tale media sono in [softlearning sac r.268~273].
+
+
+
+************************************************
+
+RIFERIMENTI
+
+Implementazione spinningup
+https://github.com/openai/spinningup/blob/master/spinup/algos/tf1/sac/sac.py
+https://github.com/openai/spinningup/blob/master/spinup/algos/tf1/sac/core.py
+sac.py contiene l'algoritmo vero e proprio, mentre core.py ha praticamente solo la definizione delle NN e della policy
+
+Implementazione softlearning
+https://github.com/rail-berkeley/softlearning/blob/master/softlearning/algorithms/sac.py
+https://github.com/rail-berkeley/softlearning/blob/master/softlearning/value_functions/base_value_function.py
+https://github.com/rail-berkeley/softlearning/blob/master/softlearning/policies/base_policy.py
+https://github.com/rail-berkeley/softlearning/blob/master/softlearning/policies/gaussian_policy.py
+https://github.com/rail-berkeley/softlearning/blob/master/softlearning/samplers/simple_sampler.py
+https://github.com/rail-berkeley/softlearning/blob/master/softlearning/algorithms/rl_algorithm.py
+Questa è una lista non esaustiva dei moduli che ho dovuto aprire per comprendere l'implementazione softlearning.
+rl_algorithm ha tutto l'algoritmo, sac implementa l'allenamento secondo SAC,
+base_policy (classi base astratte) e gaussian_policy (classe concreta) definiscono l'oggetto che rappresenta la policy,
+base_value_function definisce l'oggetto che rappresenta la q,
+simple_sampler si occupa dell'interazione con l'environment e salvataggio di alcune relative informazioni.
+
+Guida Google
+https://www.tensorflow.org/tutorials/reinforcement_learning/actor_critic
+Un tutorial di tf2 che spiega, in modo molto generico, come si definisce e allena una NN per un metodo actor-critic.
+Non possiamo semplicemente copincollare il codice, ma è un buon modo per capire come funziona tf in questo contesto.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
