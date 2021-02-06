@@ -5,6 +5,7 @@ Modulo per una policy gaussiana multivariata
 Proprietà/Metodi rilevanti:
  - actions_and_log_probs
  - trainable_variables
+ - deterministic_mode
 
 TODO
 In un momento futuro, potremmo voler fare in modo che la policy
@@ -14,6 +15,7 @@ oppure facendo un metodo che crea una copia profonda della policy
 eccetto che ha _deterministic pari a True.
 '''
 
+from contextlib import contextmanager
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -203,6 +205,27 @@ class Policy:
             # (praticamente, un vettore colonna)
 
         return actions, logprobs
+
+    # Ho provato a implementare questa funzionalità facendo una deepcopy della policy
+    # e rendere deterministica solo la copia, ma non ha funzionato,
+    # quindi passo a quest'altra modalità
+    """
+    Rende questa policy deterministica temporaneamente.
+    Utilizzare in un blocco with.
+    Per saperne di più sul suo funzionamento, cercare informazioni sul decoratore
+    "contextmanager".
+
+    UTILIZZO:
+    with policy.deterministic_mode():
+        # dentro il blocco with la policy è deterministica
+        policy.<...>
+    # fuori dal blocco, ritorna stocastica
+    """
+    @contextmanager
+    def deterministic_mode(self):
+        self._deterministic=True
+        yield
+        self._deterministic=False
 
 '''
 Crea una rete neurale che prende in ingresso una o più osservazioni

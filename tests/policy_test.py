@@ -28,7 +28,7 @@ print()
 print("---------- EVVIVA ----------")
 print()
 
-# Ora vediamo come si comportano i due metodi che mi preme esporre
+# Ora vediamo come si comportano i due/tre metodi che mi preme esporre
 # Cominciamo con quello facile
 # print(polisi.trainable_weights)
 # In realtà è un po' grandicello, mostrami soltanto un elemento
@@ -47,13 +47,36 @@ oss2 = np.array([2.0,2.1,2.2])
 oss3 = np.array([3.0,3.1,3.2])
 oss_batch = np.array([oss0,oss1,oss2,oss3])
 # E poi cerchiamo di farci dare azioni e logprob
+# Lo facciamo due volte per assicurarci che la policy sia stocastica
 actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
-print("-----")
+print("--- [1] ---")
 print(actions)
-print("---")
 print(logprobs)
+actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
+print("--- [2] ---")
+print(actions)
+print(logprobs)
+
+# Infine testiamo il passaggio alla policy deterministica
+with polisi.deterministic_mode():
+    # Ancora, ripetiamo il test due volte per assicurarci che escano gli stessi risultati
+    actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
+    print("--- [3] ---")
+    print(actions)
+    print(logprobs)
+    actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
+    print("--- [4] ---")
+    print(actions)
+    print(logprobs)
+
+# Un'ultima volta con la policy stocastica per controllare che funzioni ancora...
+actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
+print("--- [5] ---")
+print(actions)
+print(logprobs)
+# ...e credo di poter essere soddisfatto
 
 # Ovviamente adesso i valori numerici puri non c'azzeccano niente,
 # ma voglio solo controllare che i metodi si eseguano senza problemi
 print()
-print("---------- [FINE] ----------")
+print("---------- FINE ----------")
