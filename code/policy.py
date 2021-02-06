@@ -2,10 +2,16 @@
 [francesco]
 Modulo per una policy gaussiana multivariata
 
-TODO
-Devo esporre le seguenti proprietà (non necessariamente con questi nomi):
+Proprietà/Metodi rilevanti:
  - actions_and_log_probs
- - trainable_variables [done]
+ - trainable_variables
+
+TODO
+In un momento futuro, potremmo voler fare in modo che la policy
+diventi deterministica.
+Possiamo farlo copiando evaluation_mode [softlearning gaussian_policy r.173]
+oppure facendo un metodo che crea una copia profonda della policy
+eccetto che ha _deterministic pari a True.
 '''
 
 import tensorflow as tf
@@ -115,7 +121,9 @@ class Policy:
 
         #fine __init__
 
-    '''Espone i parametri allenabili della NN (con un paio di alias)'''
+    '''
+    Espone i parametri allenabili della NN (con un paio di alias)
+    '''
     @property
     def trainable_weights(self):
         return self.means_and_sigmas_model.trainable_weights
@@ -127,7 +135,9 @@ class Policy:
         return self.trainable_weights
 
     '''
-    TODO scrivere descrizione
+    Data una batch di osservazioni, restituisce le azioni corrispondenti
+    campionate dalla policy, e il logaritmo della probabilità
+    che ciascuna fosse scelta.
     '''
     def compute_actions_and_logprobs(self, observations):
         # Recupera la dimensione della batch
@@ -135,6 +145,13 @@ class Policy:
         batch_shape = tf.shape(observations)[0:1]
         # prendo solo la prima componente, ma con questa notazione mi assicuro
         # che il tipo di dato rimanga tupla (array, tensore, insomma non diventi scalare)
+
+        # TODO: volendo fare una cosa un filino più elegante si può provare questo:
+        # batch_shape = tf.shape(observations)[0 : -len(self._observation_shape)]
+        # Praticamente, toglie un numero di dimensioni pari alle dimensioni di una singola
+        # osservazione, lasciandoci con la dimensione della batch
+        # (anche se non è monodimensionale).
+        # Tuttavia, vorei provare prima la versione più semplice che sta qui sopra
 
         # Invoca il modello per calcolare i parametri della distribuzione
         # per ogni osservazione della batch
@@ -159,7 +176,30 @@ class Policy:
             # specificata in cui ogni elemento è infinito
             logprobs = tf.fill(logprobs_shape, np.inf)
         else:
-            # TODO
+            # calcola le azioni campionandole dalla distribuzione multivariata
+            # (passando opportuni parametri ai biiettori)
+            actions = self.action_distribution.sample(
+                batch_shape,
+                bijector_kwargs={    # questo parametro serve a passare argomenti ai biiettori
+                    "apply_means": {"shift": means},     # al parametro "shift" del biiettore di nome "apply_means" viene passato il vettore means calcolato sopra dalla NN
+                    "apply_sigmas": {"scale": sigmas}     # similmente, al parametro "scale" di "apply_sigmas" viene passato sigmas
+                }
+            )
+            # calcola il logaritmo delle probabilità che ciascuna azione
+            # sia stata scelta dalla distribuzione (dati anche i parametri dei biiettori)
+            logprobs = self.action_distribution.log_prob(
+                actions,
+                bijector_kwargs={
+                    "apply_means": {"shift": means},
+                    "apply_sigmas": {"scale": sigmas}
+                }
+            )[..., tf.newaxis]
+            # l'ultima riga aggiunge un nuovo asse come ultimo del tensore.
+            #`se il tensore originale era monodimensionale (probabile) lungo N,
+            # il nuovo tensore è bidimensionale Nx1
+            # (praticamente, un vettore colonna)
+
+        return actions, logprobs
 
     '''
     Crea una rete neurale che prende in ingresso una o più osservazioni
