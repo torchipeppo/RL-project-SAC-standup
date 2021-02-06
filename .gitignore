@@ -1,0 +1,2 @@
+# Ignoriamo le directory __pycache__ a qualsiasi livello
+__pycache__
