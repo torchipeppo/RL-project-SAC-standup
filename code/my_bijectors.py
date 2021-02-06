@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow_probability.python.internal import dtype_util
 
 """
 [francesco]
@@ -16,6 +17,7 @@ class ParametricShift(tfp.bijectors.Bijector):
         with tf.name_scope(name) as name:    # fa aggiungere un prefisso ai nomi
             super(ParametricShift, self).__init__(
                 is_constant_jacobian=True,
+                forward_min_event_ndims=0,
                 name=name
             )
 
@@ -42,8 +44,9 @@ Necessario per le stesse ragioni di ParametricShift.
 class ParametricScale(tfp.bijectors.Bijector):
     def __init__(self, name="parametric_scale"):
         with tf.name_scope(name) as name:    # fa aggiungere un prefisso ai nomi
-            super(ParametricShift, self).__init__(
+            super(ParametricScale, self).__init__(
                 is_constant_jacobian=True,
+                forward_min_event_ndims=0,
                 name=name
             )
 
