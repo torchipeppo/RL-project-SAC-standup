@@ -46,7 +46,8 @@ class Policy:
         # o se invece debbano essere lasciate in [-1,1] per essere scalate
         # in un secondo momento (magari subito prima di passare l'azione
         # a env.step).
-        # PER IL MOMENTO sono per scalare subito, ma dato che il progetto
+        # PER IL MOMENTO sono per scalare subito, ma dato che
+        # (al momento della scrittura di questo commento) il progetto
         # è ancora agli inizi potrebbe esserci motivo di cambiare idea,
         # quindi lascio un controllo booleano per cambiare facilmente
         # comportamento senza girarsi mezzo modulo.
@@ -60,7 +61,7 @@ class Policy:
         self._action_shape = action_space.shape;    # FYI: nel nostro caso, è (17,)
         # ha senso ricordarsi il "vero" action_range solo se abbiamo
         # intenzione di usarlo per scalare le azioni, altrimenti
-        # è meglio far finta che il range sia []-1,1]
+        # è meglio far finta che il range sia [-1,1]
         # N.B.: Questo modo di settare _action_range e _action_scale
         #       presume che tutte le azioni hanno lo stesso range,
         #       e tale range è simmetrico
