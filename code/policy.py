@@ -5,17 +5,10 @@ Modulo per una policy gaussiana multivariata
 Proprietà/Metodi rilevanti:
  - actions_and_log_probs
  - trainable_variables
- - deterministic_mode
-
-TODO
-In un momento futuro, potremmo voler fare in modo che la policy
-diventi deterministica.
-Possiamo farlo copiando evaluation_mode [softlearning gaussian_policy r.173]
-oppure facendo un metodo che crea una copia profonda della policy
-eccetto che ha _deterministic pari a True.
+ - create_deterministic_policy
 '''
 
-from contextlib import contextmanager
+import copy
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -31,6 +24,16 @@ class Policy:
         hidden_acti="relu",             #vedi _make_model
         pseudo_output_acti="linear"     #vedi _make_model
     ):
+        # mi salvo i parametri dato che devo clonare quest'oggetto
+        # per fare la policy deterministica
+        self._args = {
+            "observation_space": observation_space,
+            "action_space": action_space,
+            "hidden_layer_sizes": hidden_layer_sizes,
+            "hidden_acti": hidden_acti,
+            "pseudo_output_acti": pseudo_output_acti,
+        }
+
         # questo parametro decide se le azioni restituite dalla policy debbano
         # essere campionate dalla distribuzione con le medie e varianze
         # date dalla NN, o se invece debba restituire  direttamente le medie,
@@ -112,9 +115,11 @@ class Policy:
         # definizione del biiettore che fa clamping e forse scaling (vedi _scale_immediately)
         __clamping_bijector = tfp.bijectors.Tanh()     #variabile temporanea, solo per non avere lo stesso biiettore scritto in due punti diversi
         if self._scale_immediately:
+            # l'ultimo biiettore specificato è quello eseguito per primo,
+            # è lo stesso ordine del prodotto di composizione di funzioni
             self._clamp_and_maybe_scale_actions_bijector = tfp.bijectors.Chain((
-                __clamping_bijector,
                 tfp.bijectors.Scale(self._action_scale),   # qui uso lo Scale normale perché voglio sempre portare [-1,1] in [-_action_scale,_action_scale]
+                __clamping_bijector,
             ))
         else:
             self._clamp_and_maybe_scale_actions_bijector = __clamping_bijector
@@ -206,26 +211,41 @@ class Policy:
 
         return actions, logprobs
 
-    # Ho provato a implementare questa funzionalità facendo una deepcopy della policy
-    # e rendere deterministica solo la copia, ma non ha funzionato,
-    # quindi passo a quest'altra modalità
-    """
-    Rende questa policy deterministica temporaneamente.
-    Utilizzare in un blocco with.
-    Per saperne di più sul suo funzionamento, cercare informazioni sul decoratore
-    "contextmanager".
-
-    UTILIZZO:
-    with policy.deterministic_mode():
-        # dentro il blocco with la policy è deterministica
-        policy.<...>
-    # fuori dal blocco, ritorna stocastica
-    """
-    @contextmanager
-    def deterministic_mode(self):
-        self._deterministic=True
-        yield
-        self._deterministic=False
+    '''
+    Crea una copia profonda della policy, tranne che è deterministica.
+    N.B.: Trattandosi di una copia profonda, una volta creata NON si aggiornerà
+          automaticamente mentre la policy originale si allena.
+          Quindi bisogna creare una nuova copia deterministica
+          ogni volta che se ne vuole una, non si può riutilizzare la stessa.
+    RESTITUISCE: la copia profonda deterministica
+    '''
+    # [francesco]
+    # Avevo provato a fare questa funzionalità con copy.deepcopy, ma dava problemi.
+    # Allora sono passato a un contextmanager come [softlearning gaussian_policy],
+    # ma risulta incompatibile con la modalità @tf.function, che credevo fosse
+    # necessaria per far funzionare correttamente i biiettori.
+    # Quindi sono tornato al concetto della copia profonda e ho fatto una
+    # versione che non usa deepcopy.
+    # Infine sono anche riuscito a far funzionare deepcopy
+    # semplicemente prendendo a parte che dava problemi (il modello keras)
+    # e clonando quella parte manualmente.
+    # (Poi alla fine pare che @tf.function non sia necessaria,
+    #  ma comunque alla fine credo sia meglio avere qualcosa che funziona
+    #  in entrambe le modalità in caso vogliamo passare a @tf.function
+    #  per qualsiasi motivo)
+    def create_deterministic_policy(self):
+        #twin = Policy(**self._args)     # alla fine sono riuscito a usare deepcopy
+        twin = copy.deepcopy(self)
+        twin.means_and_sigmas_model = keras.models.clone_model(
+            self.means_and_sigmas_model
+        )
+        # pare che clone_model non copi i pesi quindi per sicurezza li clono a mano
+        # [ https://stackoverflow.com/questions/54366935/make-a-deep-copy-of-a-keras-model-in-python ]
+        twin.means_and_sigmas_model.set_weights(
+            self.means_and_sigmas_model.get_weights()
+        )
+        twin._deterministic = True
+        return twin
 
 '''
 Crea una rete neurale che prende in ingresso una o più osservazioni

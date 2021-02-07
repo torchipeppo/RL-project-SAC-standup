@@ -48,33 +48,41 @@ oss3 = np.array([3.0,3.1,3.2])
 oss_batch = np.array([oss0,oss1,oss2,oss3])
 # E poi cerchiamo di farci dare azioni e logprob
 # Lo facciamo due volte per assicurarci che la policy sia stocastica
-actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
+actions1, logprobs1 = polisi.compute_actions_and_logprobs(oss_batch)
 print("--- [1] ---")
-print(actions)
-print(logprobs)
-actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
+print(actions1)
+print(logprobs1)
+actions2, logprobs2 = polisi.compute_actions_and_logprobs(oss_batch)
 print("--- [2] ---")
-print(actions)
-print(logprobs)
+print(actions2)
+print(logprobs2)
 
 # Infine testiamo il passaggio alla policy deterministica
-with polisi.deterministic_mode():
-    # Ancora, ripetiamo il test due volte per assicurarci che escano gli stessi risultati
-    actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
-    print("--- [3] ---")
-    print(actions)
-    print(logprobs)
-    actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
-    print("--- [4] ---")
-    print(actions)
-    print(logprobs)
+polisi_det = polisi.create_deterministic_policy()
+# Ancora, ripetiamo il test due volte per assicurarci che escano gli stessi risultati
+actions3, logprobs3 = polisi_det.compute_actions_and_logprobs(oss_batch)
+print("--- [3] ---")
+print(actions3)
+print(logprobs3)
+actions4, logprobs4 = polisi_det.compute_actions_and_logprobs(oss_batch)
+print("--- [4] ---")
+print(actions4)
+print(logprobs4)
 
 # Un'ultima volta con la policy stocastica per controllare che funzioni ancora...
-actions, logprobs = polisi.compute_actions_and_logprobs(oss_batch)
+actions5, logprobs5 = polisi.compute_actions_and_logprobs(oss_batch)
 print("--- [5] ---")
-print(actions)
-print(logprobs)
+print(actions5)
+print(logprobs5)
 # ...e credo di poter essere soddisfatto
+
+print("----- ULTIMA COSA -----")
+
+# controlliamo che i pesi delle due policy siano uguali
+print(polisi.trainable_weights[-2])
+print(polisi_det.trainable_weights[-2])
+print(polisi.trainable_weights[-2] == polisi_det.trainable_weights[-2])
+# pare di sì
 
 # Ovviamente adesso i valori numerici puri non c'azzeccano niente,
 # ma voglio solo controllare che i metodi si eseguano senza problemi
