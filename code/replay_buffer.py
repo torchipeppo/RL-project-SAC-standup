@@ -73,7 +73,7 @@ class ReplayBuffer:
     def random_batch(self, batch_size):
         # estrai `batch_size` indici casuali
         randomized_indices = np.random.randint(0, self.size, batch_size)
-        # recupera i dati corrispondentia quegli indici dal buffer
+        # recupera i dati corrispondenti a quegli indici dal buffer
         # (grazie all'indicizzamento multiplo di numpy)
         obs_batch = self.observations[randomized_indices]
         next_obs_batch = self.next_observations[randomized_indices]
