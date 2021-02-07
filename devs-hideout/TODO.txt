@@ -1,9 +1,9 @@
 [A] Modulo per le q [softlearning value_function]
 [*] Modulo per la policy [softlearning base_policy gaussian_policy]
 
-[ ] Replay buffer [spinningup]
+[*] Replay buffer [spinningup]
 [ ] Allenamento q
-[F] Allenamento policy
+[.] Allenamento policy
 [ ] Aggiornamento q_targ
 
 [ ] Loop principale (dall'inizio)
