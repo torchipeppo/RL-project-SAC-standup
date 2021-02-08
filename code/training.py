@@ -18,6 +18,7 @@ Alternative ad avere un modulo dedicato al training sono:
 '''
 
 import tensorflow as tf
+import replay_buffer
 
 '''
 [francesco]
@@ -37,7 +38,7 @@ def trainingstep_policy(policy, batch, q1, q2, alpha, policy_optimizer):
     # per fare un progetto più generalizzato
 
     # Recupera le osservazioni dalla batch
-    observations = batch[__???__]   #TODO usare la chiave definita dal replay buffer
+    observations = batch[replay_buffer.OBSERVATIONS]
 
     # Definiamo la funzione di cui calcolare il gradiente
     # grazie al GradientTape di tf
