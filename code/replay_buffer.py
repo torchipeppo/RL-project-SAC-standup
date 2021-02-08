@@ -64,7 +64,7 @@ class ReplayBuffer:
         # nel qual caso il buffer era già pieno
         # e abbiamo sovrascritto una vecchia entry
         if self.size < self.max_size:
-            self.size++
+            self.size += 1
 
     '''
     Estrae una batch casuale dal buffer.
