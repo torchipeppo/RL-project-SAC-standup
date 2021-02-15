@@ -154,3 +154,20 @@ def trainingstep_policy(policy, batch, q1, q2, alpha, policy_optimizer):
     # Dal puro punto di vista dell'allenamento, non c'è bisogno di restituire nulla,
     # restituiamo le perdite della policy per possibili fini statistici
     return policy_losses
+
+'''
+Operazione base della prossima funzione
+RESTITUISCE: None
+'''
+def updatestep_single_q_targ(q, q_targ, tau):
+    for q_weight, q_targ_weight in zip(q.trainable_weights, q_targ.trainable_weights):
+        q_targ_weight.assign(tau*q_weight + (1.0-tau)*q_targ_weight)
+
+'''
+[francesco]
+Esegue un passo di aggiornamento delle q_targ, tramite media esponenziale mobile
+RESTITUISCE: None
+'''
+def updatestep_q_targ(q1, q2, q1_targ, q2_targ, tau):
+    updatestep_single_q_targ(q1, q1_targ, tau)
+    updatestep_single_q_targ(q2, q2_targ, tau)

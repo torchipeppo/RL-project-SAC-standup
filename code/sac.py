@@ -28,6 +28,8 @@ np.random.seed(seed)
 env_name = "HumanoidStandup-v2"
 env = gym.make(env_name)
 test_env = gym.make(env_name)
+env.seed(seed)
+test_env.seed(seed)
 # Recuperiamo le dimensioni degli spazi d'osservazione e azione (come scalari)
 obs_dim = env.observation_space.shape[0]
 act_dim = env.action_space.shape[0]
