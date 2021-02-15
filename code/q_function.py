@@ -5,10 +5,12 @@ Modulo per una funzione q
 Proprietà/Metodi rilevanti:
  - compute_q_values
  - trainable_variables
+ - create_deepcopy
 '''
 
 import tensorflow as tf
 import tensorflow.keras as keras
+import copy
 
 class Q_Function:
     def __init__(
@@ -51,6 +53,19 @@ class Q_Function:
     def compute_q_values(self, observations, actions):
         vals = self.q_model((observations, actions))
         return vals
+
+    '''
+    Crea una copia di quest'oggetto che non ha legami con l'originale.
+    Utile per inizializzare la q_targ corrispondente alla q
+    RESTITUISCE: la copia
+    '''
+    def create_deepcopy(self):
+        twin = copy.deepcopy(self)
+        twin.q_model = keras.models.clone_model(self.q_model)
+        # pare che clone_model non copi i pesi quindi per sicurezza li clono a mano
+        # [ https://stackoverflow.com/questions/54366935/make-a-deep-copy-of-a-keras-model-in-python ]
+        twin.q_model.set_weights(self.q_model.get_weights())
+        return twin
 
 '''
 Crea una rete neurale che prende in ingresso una (batch di) coppia
