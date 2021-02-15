@@ -3,42 +3,13 @@ import tensorflow as tf
 import gym
 import time
 import datetime
+import pickle
 from pathlib import Path
 import policy as policy_module
 import q_function as q_fn_module
 import replay_buffer as replay_buffer_module
-import training as training_module
+import agent as agent_module
 import path_constants
-
-
-
-
-
-
-
-
-
-
-
-'''
-PARAMETRI (in caso vogliamo farlo in modo funzionale o OOP)
-env_name (per noi è sempre HumanoidStandup-v2)
-seed
-buffer_size
-epochs
-steps_per_epoch
-max_episode_duration
-steps_without_training
-training_period
-batch_size
-alpha
-q_lr
-policy_lr
-gamma
-tau
-save_period
-test_eps_no
-'''
 
 class SAC:
     def __init__(
@@ -73,21 +44,15 @@ class SAC:
         self.env.seed(seed)
         self.test_env.seed(seed)
         # Recuperiamo le dimensioni degli spazi d'osservazione e azione (come scalari)
+        # TODO in teoria non serve salvarsele con self., ma me ne occupo post-refactor
         self.obs_dim = self.env.observation_space.shape[0]
         self.act_dim = self.env.action_space.shape[0]
-        # Creare 5 reti neurali: q1, q2, policy, q1_targ, q2_targ (come modelli Keras)
-        self.q1 = q_fn_module.Q_Function(
-            self.env.observation_space, self.env.action_space
+        # le 5 NN e il rapley buffer sono stati spostati nel nuovo modulo:
+        self.the_agent = agent_module.Agent(
+            self.env.observation_space, self.env.action_space,
+            q_lr, policy_lr, alpha, gamma, tau
         )
-        self.q2 = q_fn_module.Q_Function(
-            self.env.observation_space, self.env.action_space
-        )
-        self.policy = policy_module.Policy(
-            self.env.observation_space, self.env.action_space
-        )
-        self.q1_targ = self.q1.create_deepcopy()
-        self.q2_targ = self.q2.create_deepcopy()
-        ### Creare il replay buffer
+        # Creare il replay buffer
         self.replay_buffer = replay_buffer_module.ReplayBuffer(
             self.obs_dim, self.act_dim, buffer_size
         )
@@ -95,19 +60,14 @@ class SAC:
         self.epochs = epochs
         self.steps_per_epoch = steps_per_epoch
         self.total_steps = self.steps_per_epoch * self.epochs
-        # inizializzazione optimizer
-        self.q1_optimizer = tf.optimizers.Adam(learning_rate=q_lr)
-        self.q2_optimizer = tf.optimizers.Adam(learning_rate=q_lr)
-        self.policy_optimizer = tf.optimizers.Adam(learning_rate=policy_lr)
+        # optimizers spostati nell'Agent, TODO cancellare commento tra un paio di giorni
         # altri parametri
         self.warmup_steps = warmup_steps
         self.max_episode_duration = max_episode_duration
         self.steps_without_training = steps_without_training
         self.training_period = training_period
         self.batch_size = batch_size
-        self.alpha = alpha
-        self.gamma = gamma
-        self.tau = tau
+        # alpha, gamma, tau spostati nell'Agent, TODO cancellare commento tra un paio di giorni
         self.save_period = save_period
         self.test_eps_no = test_eps_no
         # inizializzazione path di salvataggio
@@ -159,7 +119,7 @@ class SAC:
                 # actions, _ = policy.compute_actions_and_logprobs(obs)    # vediamo che succede usando il metodo che già ho
                 # # è stata una brutta idea
                 # act = actions[0].numpy()
-                act = self.policy.compute_action(obs)
+                act = self.the_agent.compute_action(obs)
             else:
                 act = self.env.action_space.sample()
 
@@ -188,20 +148,8 @@ class SAC:
             if t>=self.steps_without_training and t%self.training_period==0:
                 for j in range(self.training_period):   # il rate step/train deve comunque essere 1:1, anche se facciamo gli allenamenti in "batch" piuttosto che letteralmente 1 a step
                     batch = self.replay_buffer.random_batch(self.batch_size)
-                    # TODO pensavo di portare il training di qua, ma forse è meglio portare i modelli di là...
-                    #      per ora metto così, ma pensiamoci
-                    training_module.trainingstep_q(
-                        self.q1, self.q2, batch, self.policy,
-                        self.q1_targ, self.q2_targ, self.alpha, self.gamma,
-                        self.q1_optimizer, self.q2_optimizer
-                    )
-                    training_module.trainingstep_policy(
-                        self.policy, batch, self.q1, self.q2,
-                        self.alpha, self.policy_optimizer
-                    )
-                    training_module.updatestep_q_targ(
-                        self.q1, self.q2, self.q1_targ, self.q2_targ, self.tau
-                    )
+                    # training spostato nell'Agent, TODO cancellare questo commento tra un paio di giorni
+                    self.the_agent.trainingstep(batch)
 
             ### Nell'ultimo timestep di ogni epoch, potremmo voler calcolare e stampare qualche metrica, e fare altre operazioni
             if (t+1)%self.steps_per_epoch==0:
@@ -234,27 +182,11 @@ class SAC:
     '''
 
     def save_everything(self, save_path, suffix):
-        # TODO devo fare __getstate__ e __setstate__
-        # return
-        # il codice seguente è ora deprecato
-        import pickle
         if not save_path.exists():
             save_path.mkdir()
-        with open(save_path/"q1{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(self.q1, f)
-        with open(save_path/"q2{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(self.q2, f)
-        with open(save_path/"policy{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(self.policy, f)
-        with open(save_path/"q1targ{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(self.q1_targ, f)
-        with open(save_path/"q2targ{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(self.q2_targ, f)
         with open(save_path/"replaybuffer{}.pkl".format(suffix), "wb") as f:
             pickle.dump(self.replay_buffer, f)
-        # ora non ho più bisogno di salvare i modelli separatamente
-        # perché picklo pesi e configurazioni in __getstate__
-        # e ripristino tutto in __setstate__
+        self.the_agent.save_all_models(save_path, suffix)
 
     # in realtà questa è praticamente "statica"
     def simple_episode_info_dump(self, logfpath, episode_length, episode_return):
@@ -267,7 +199,8 @@ class SAC:
             f.write("{}\t{}\n".format(episode_length, episode_return))
 
     def do_tests(self, base_save_path):
-        deterministic_policy = self.policy.create_deterministic_policy()
+        # qui conviene accedere direttamente all'Agent
+        deterministic_policy = self.the_agent.policy.create_deterministic_policy()
         for _ in range(self.test_eps_no):
             # reset
             obs = self.test_env.reset()
