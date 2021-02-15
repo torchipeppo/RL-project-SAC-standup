@@ -13,7 +13,7 @@
 [*] Un po' di sano refactor
 
 [*] main con configurazioni
-[ ] indagare sulla registrazione degli episodi
+[*] indagare sulla registrazione degli episodi
 
 [ ] esperimenti esperimenti esperimenti esperimenti
 
