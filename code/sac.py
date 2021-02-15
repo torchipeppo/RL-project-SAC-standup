@@ -1,6 +1,8 @@
 import tensorflow as tf
 import policy as policy_module
+import q_function as q_fn_module
 import replay_buffer as replay_buffer_module
+import training as training_module
 
 '''
 PARAMETRI (in caso vogliamo farlo in modo funzionale o OOP)
@@ -20,14 +22,14 @@ gamma
 '''
 
 ### "Copiare" spinningup r.137~148
-# Inizializziamo i seed a un valore fisso, per ripetibilità
-seed=14383421
-tf.set_random_seed(seed)
-np.random.seed(seed)
 # Creiamo due environment: uno per il training e uno per il test
 env_name = "HumanoidStandup-v2"
 env = gym.make(env_name)
 test_env = gym.make(env_name)
+# Inizializziamo i seed a un valore fisso, per ripetibilità
+seed=14383421
+tf.set_random_seed(seed)
+np.random.seed(seed)
 env.seed(seed)
 test_env.seed(seed)
 # Recuperiamo le dimensioni degli spazi d'osservazione e azione (come scalari)
@@ -39,10 +41,10 @@ act_dim = env.action_space.shape[0]
 # ac_kwargs['action_space'] = env.action_space
 
 ### Creare 5 reti neurali: q1, q2, policy, q1_targ, q2_targ (come modelli Keras)
-q1 = __???__
-q2 = __???__
+q1 = q_fn_module.Q_Function(env.observation_space, anv.action_space)
+q2 = q_fn_module.Q_Function(env.observation_space, anv.action_space)
 policy = policy_module.Policy(env.observation_space, env.action_space)
-q1_targ = __???__
+q1_targ = __???__  # TODO prima devo fare una funzione che fa una deepcopy della q
 q2_targ = __???__
 
 ### Creare il replay buffer
@@ -105,7 +107,7 @@ for t in range(total_steps):
 
     ### fine episodio
     if done or episode_duration>=max_episode_duration:
-        simple_episode_info_dump(___???___, episode_duration, episode_return)  # questo file sarebbe quello per gli episodi di training, che sarebbe DIVERSO da quello di test
+        simple_episode_info_dump(__???__, episode_duration, episode_return)  # questo file sarebbe quello per gli episodi di training, che sarebbe DIVERSO da quello di test
         obs = env.reset()
         episode_return = 0
         episode_duration = 0
@@ -114,11 +116,14 @@ for t in range(total_steps):
     if t>=steps_without_training and t%training_period==0:
         for j in range(training_period):   # il rate step/train deve comunque essere 1:1, anche se facciamo gli allenamenti in "batch" piuttosto che letteralmente 1 a step
             batch = replay_buffer.random_batch(batch_size)
-            q1.__???__(...)
-            q2.__???__(...)
-            trainingstep_policy(policy, batch, q1, q2, alpha, policy_optimizer)   # se effettivamente mettiamo il training qui dentro, ci risparmieremo molti parametri in questa funzione
-            q1targ.__???__(...)
-            q2targ.__???__(...)
+            # TODO pensavo di portare il training di qua, ma forse è meglio portare i modelli di là...
+            #      per ora metto così, ma pensiamoci
+            training_module.trainingstep_q(
+                q1, q2, batch, policy, q1_targ, q2_targ,
+                alpha, gamma, q1_optimizer, q2_optimizer
+            )
+            training_module.trainingstep_policy(policy, batch, q1, q2, alpha, policy_optimizer)
+            training_module.updatestep_q_targ(q1, q2, q1_targ, q2_targ, tau)
 
     ### Nell'ultimo timestep di ogni epoch, potremmo voler calcolare e stampare qualche metrica, e fare altre operazioni
     if (t+1)%steps_per_epoch==0:
@@ -158,10 +163,10 @@ def save_everything(..., suffix):
         pickle.dump(replay_buffer, f)
     # poi ho l'impressione che dovrei salvare i modelli separatamente, per sicurezza
     policy.means_and_sigmas_model.save(base_path/"policy{}.h5".format(suffix))
-    q1.__???__.save(base_path/"q1{}.h5".format(suffix))
-    q2.__???__.save(base_path/"q2{}.h5".format(suffix))
-    q1targ.__???__.save(base_path/"q1targ{}.h5".format(suffix))
-    q2targ.__???__.save(base_path/"q2targ{}.h5".format(suffix))
+    q1.q_model.save(base_path/"q1{}.h5".format(suffix))
+    q2.q_model.save(base_path/"q2{}.h5".format(suffix))
+    q1targ.q_model.save(base_path/"q1targ{}.h5".format(suffix))
+    q2targ.q_model.save(base_path/"q2targ{}.h5".format(suffix))
 
 def simple_episode_info_dump(logfname, episode_length, episode_return):
     # TODO sarebbe carino inizializzare logfname (da un'altra parte) a un nome di file che ancora non esiste, e crearlo vuoto (o magari con una prima riga di intestazione)

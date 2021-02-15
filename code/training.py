@@ -120,8 +120,8 @@ def trainingstep_policy(policy, batch, q1, q2, alpha, policy_optimizer):
         actions, logprobs = policy.compute_actions_and_logprobs(observations)
 
         # calcola il valore di entrambe le funzioni q...
-        q1_target_values = __???__  # TODO usare l'API dell'oggetto <funzione q>
-        q2_target_values = __???__  # TODO idem
+        q1_target_values = q1.compute_q_values(observations, actions)
+        q2_target_values = q2.compute_q_values(observations, actions)
         # e prendi il più piccolo (per ogni osservazione della batch)
         q_target_values = tf.reduce_min((q1_target_values, q2_target_values), axis=0)
 

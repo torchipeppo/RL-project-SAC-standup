@@ -1,4 +1,5 @@
 '''
+[francesco]
 Modulo per una funzione q
 
 Proprietà/Metodi rilevanti:
@@ -19,6 +20,8 @@ class Q_Function:
         output_acti="linear"     #vedi _make_model
     ):
         # estraggo i parametri rilevanti dagli spazi di osservazione e azione
+        # (stavolta ci servono solo le shape, lascio comunque tutto lo space come
+        #  argomento per "coerenza" con l'API della Policy)
         self._observation_shape = observation_space.shape;    # FYI: nel nostro caso è (376,)
         self._action_shape = action_space.shape;    # FYI: nel nostro caso, è (17,)
 
