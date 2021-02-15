@@ -12,4 +12,6 @@
 [*] Sistemare salvataggio
 [*] Un po' di sano refactor
 
+[ ] main con configurazioni
+
 [ ] esperimenti esperimenti esperimenti esperimenti
