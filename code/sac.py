@@ -2,10 +2,13 @@ import numpy as np
 import tensorflow as tf
 import gym
 import time
+import datetime
+from pathlib import Path
 import policy as policy_module
 import q_function as q_fn_module
 import replay_buffer as replay_buffer_module
 import training as training_module
+import path_constants
 
 '''
 PARAMETRI (in caso vogliamo farlo in modo funzionale o OOP)
@@ -23,7 +26,32 @@ q_lr
 policy_lr
 gamma
 tau
+save_period
+test_eps_no
 '''
+
+# inizializzazione path di salvataggio
+'''
+ATTENZIONE!
+Se [alessio] o chiunque altro usa questo codice,
+deve creare un file path_constants.py e definire al suo interno
+un oggetto Path in una variabile REPO_ROOT
+che contenga il path assoluto della radice della repo
+SULLA SUA MACCHINA.
+Non carico quel file su GitHub appunto perché riguarda informazioni
+specifiche della macchina usata.
+'''
+now = datetime.now()
+unique_subdir_name = "{}_{}_{}_{}_{}_{}".format(
+    now.year,
+    now.month,
+    now.day,
+    now.hour,
+    now.minute,
+    now.second
+)
+base_save_path = path_constants.REPO_ROOT / "saves" / unique_subdir_name
+base_save_path.mkdir()
 
 ### "Copiare" spinningup r.137~148
 # Creiamo due environment: uno per il training e uno per il test
@@ -82,6 +110,12 @@ batch_size = 100
 alpha = 0.2   # temperatura
 gamma = 0.99  # discount factor
 tau = 0.005   # peso per l'update delle q_targ
+save_period = 10   # frequenza (in epoch) con cui salvare i modelli
+test_eps_no = 10   # numero di episodi di test per epoch
+
+# inizializzazione path
+this_epoch_save_path = base_save_path / "ep{}".format(epoch))
+this_epoch_save_path.mkdir()
 
 # cronometraggio semplice
 start_time = time.time()
@@ -115,7 +149,7 @@ for t in range(total_steps):
 
     ### fine episodio
     if done or episode_duration>=max_episode_duration:
-        simple_episode_info_dump(__???__, episode_duration, episode_return)  # questo file sarebbe quello per gli episodi di training, che sarebbe DIVERSO da quello di test
+        simple_episode_info_dump(this_epoch_save_path/"ep_stats.txt", episode_duration, episode_return)
         obs = env.reset()
         episode_return = 0
         episode_duration = 0
@@ -140,9 +174,20 @@ for t in range(total_steps):
 
         epoch = (t+1) // steps_per_epoch
 
-        # Magari salviamo le NN ogni tanto?
+        # salviamo le NN ogni tanto
+        if epoch%save_period==0 or epoch==epochs:  # salviamo sempre all'ultima epoch
+            save_everything(this_epoch_save_path/"models",  "ep{}".format(epoch-1))
+            # -1 perché adesso epoch è aggiornato all'epoch successiva,
+            # ma questo salvataggio riguarda quella appena conclusa.
+            # stesso motivo per cui non abbiamo ancora aggiornato
+            # this_epoch_save_path.
 
-        # Magari facciamo dei test col modello deterministico ogni tanto?
+        # facciamo dei test col modello deterministico ogni tanto
+        do_tests(test_eps_no, max_test_episode_duration, base_save_path)
+
+        # aggiornamento path
+        this_epoch_save_path = base_save_path / "ep{}".format(epoch))
+        this_epoch_save_path.mkdir()
 
 ### FINE LOOP PRINCIPALE
 
@@ -153,10 +198,9 @@ env.close()
 
 
 
-def save_everything(..., suffix):
+def save_everything(save_path, suffix):
     import pickle
-    from pathlib import Path
-    base_path = Path(__???__)
+    base_path = save_path
     with open(base_path/"q1{}.pkl".format(suffix), "w") as f:
         pickle.dump(q1, f)
     with open(base_path/"q2{}.pkl".format(suffix), "w") as f:
@@ -176,15 +220,18 @@ def save_everything(..., suffix):
     q1targ.q_model.save(base_path/"q1targ{}.h5".format(suffix))
     q2targ.q_model.save(base_path/"q2targ{}.h5".format(suffix))
 
-def simple_episode_info_dump(logfname, episode_length, episode_return):
-    # TODO sarebbe carino inizializzare logfname (da un'altra parte) a un nome di file che ancora non esiste, e crearlo vuoto (o magari con una prima riga di intestazione)
-    #      magari potremmo anche fare un file diverso per ogni epoch?
-    with open(logfname, 'a') as f:   # deve essere un file di testo
+def simple_episode_info_dump(logfpath, episode_length, episode_return):
+    if not logfpath.exists():
+        # facciamo una riga di intestazione
+        with open(logfpath, 'w') as f:
+            f.write("ep_len\tep_ret\n")
+    # in ogni caso, dumpiamo le info correnti
+    with open(logfpath, 'a') as f:   # deve essere un file di testo
         f.write("{}\t{}\n".format(episode_length, episode_return))
 
-def do_tests(...):
+def do_tests(test_eps_no, max_test_episode_duration, base_save_path):
     deterministic_policy = policy.create_deterministic_policy()
-    for _ in range(NUMEROEPISODIDITEST):
+    for _ in range(test_eps_no):
         # reset
         obs = test_env.reset()
         episode_return = 0
@@ -196,5 +243,6 @@ def do_tests(...):
             obs, rew, done, _ = test_env.step(act)
             episode_return += rew
             episode_duration += 1
-            if episode_duration >= DURATAMASSIMATEST: done=True
-        simple_episode_info_dump(__???__, episode_duration, episode_reward)  # questo file sarebbe quello per gli episodi di test, che sarebbe DIVERSO da quello di training
+            if episode_duration >= max_episode_duration:
+                done=True
+        simple_episode_info_dump(base_save_path/"test_ep_stats.txt", episode_duration, episode_reward)
