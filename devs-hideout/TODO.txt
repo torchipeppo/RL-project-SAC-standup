@@ -7,7 +7,7 @@
 [*] Aggiornamento q_targ
 
 [*] Loop principale
- ↑← per quanto ne so...
+ ↑← per quanto ne so è fatto, in realtà chi può esserne sicuro...
 
 [*] Sistemare salvataggio
 [*] Un po' di sano refactor
