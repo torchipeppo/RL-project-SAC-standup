@@ -20,7 +20,7 @@ class Policy:
         self,
         observation_space,  #spazio d'osservazione (secondo l'interfaccia di openai gym)
         action_space,       #spazio d'azione (secondo l'interfaccia di openai gym)
-        hidden_layer_sizes=(256,256),   #vedi _make_model
+        hidden_layer_sizes,             #vedi _make_model
         hidden_acti="relu",             #vedi _make_model
         pseudo_output_acti="linear"     #vedi _make_model
     ):

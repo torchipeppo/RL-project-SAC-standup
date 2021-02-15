@@ -33,7 +33,8 @@ class SAC:
         gamma = 0.99,   # parametro discount factor
         tau = 0.005,     # parametro peso per l'update delle q_targ
         save_period = 10,   # frequenza in epoch con cui salvare i modelli
-        test_eps_no = 10    # numero di episodi di test da svolgere alla fine di ogni epoch
+        test_eps_no = 10,    # numero di episodi di test da svolgere alla fine di ogni epoch
+        hidden_layer_sizes=(256,256)   # (numero e) dimensioni delle layer nascoste di tutti i modelli
     ):
         # Creiamo due environment: uno per il training e uno per il test
         self.env = gym.make(env_name)
@@ -50,6 +51,7 @@ class SAC:
         # le 5 NN e il rapley buffer sono stati spostati nel nuovo modulo:
         self.the_agent = agent_module.Agent(
             self.env.observation_space, self.env.action_space,
+            hidden_layer_sizes,
             q_lr, policy_lr, alpha, gamma, tau
         )
         # Creare il replay buffer

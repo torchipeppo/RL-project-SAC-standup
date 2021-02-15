@@ -22,17 +22,21 @@ class Agent:
         # spazi di osservazione e azione
         observation_space, action_space,
         # vedi sac.py
+        hidden_layer_sizes,
         q_lr, policy_lr, alpha, gamma, tau
     ):
         # creiamo le q, la policy e le q_targ
         self.q1 = q_fn_module.Q_Function(
-            observation_space, action_space
+            observation_space, action_space,
+            hidden_layer_sizes
         )
         self.q2 = q_fn_module.Q_Function(
-            observation_space, action_space
+            observation_space, action_space,
+            hidden_layer_sizes
         )
         self.policy = policy_module.Policy(
-            observation_space, action_space
+            observation_space, action_space,
+            hidden_layer_sizes
         )
         self.q1_targ = self.q1.create_deepcopy()
         self.q2_targ = self.q2.create_deepcopy()
