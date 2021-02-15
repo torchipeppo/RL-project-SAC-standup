@@ -6,7 +6,10 @@
 [*] Allenamento policy
 [*] Aggiornamento q_targ
 
-[ ] Loop principale
+[*] Loop principale
+ ↑← per quanto ne so...
 
 [*] Sistemare salvataggio
-[ ] Un po' di sano refactor
+[*] Un po' di sano refactor
+
+[ ] esperimenti esperimenti esperimenti esperimenti
