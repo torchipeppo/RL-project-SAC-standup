@@ -243,7 +243,7 @@ for t in range(total_steps):
             # this_epoch_save_path.
 
         # facciamo dei test col modello deterministico ogni tanto
-        do_tests(test_env, test_eps_no, max_episode_duration, policy, base_save_path)
+        do_tests(test_env, test_eps_no, max_episode_duration, policy, this_epoch_save_path)
 
         # aggiornamento path
         this_epoch_save_path = base_save_path / "ep{}".format(epoch)
