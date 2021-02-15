@@ -21,22 +21,95 @@ import tensorflow as tf
 import replay_buffer
 
 '''
+Il primo passo dell'allenamento delle q,
+calcola i valori da usare come bersagli nell'allenamento
+La metto da parte per separare questo passo dal resto
+RESTITUISCE: i detti valori bersaglio
+'''
+def compute_q_targets(q1_targ, q2_targ, batch, policy, alpha, gamma):
+    # recuperiamo dati dalla batch
+    next_observations = batch['next_observations']
+    rewards = batch['rewards']
+    dones = batch['dones']
+
+    # prediciamo le azioni corrispondenti alle osservazioni future
+    next_actions, next_logprobs = policy.compute_actions_and_logprobs(next_observations)
+    # calcoliamo i valori della q_targ (come minimo delle due, al solito)
+    next_q1_targ_values = q1_targ.compute_q_values(next_observations, next_actions)
+    next_q2_targ_values = q2_targ.compute_q_values(next_observations, next_actions)
+    next_q_targ_values = tf.reduce_min((next_q1_targ_values, next_q2_targ_values), axis=0)
+
+    # applichiamo l'equazione per il soft value
+    next_values = next_q_values - alpha*next_logprobs
+
+    # castiamo per compatibilità con la prossima espressione
+    dones = tf.cast(dones, next_values.dtype)
+
+    # equazione per calcolare Q_hat
+    targets = rewards + gamma*next_values
+
+    return tf.stop_gradient(targets)
+
+'''
+Passo di allenamento di una singola q
+RESTITUISCE: valore q e perdita per ciascuna coppai osservazione-azione,
+per (eventuali futuri, forse) fini statistici
+'''
+def trainingstep_single_q(q, batch, target_values, q_optimizer):
+    # recupera dati dalla batch
+    observations = batch['observations']
+    actions = batch['actions']
+
+    # applica una loss MSE standard: calcola le predizioni della NN,
+    # calcola il MSE rispetto ai bersagli, poi considera la perdita
+    # media e usala per camcolare e applicare i gradienti
+    with tf.GradientTape() as tape:
+        q_values = q.compute_q_values(observations, actions)
+        q_losses = 0.5 * tf.losses.MSE(y_true=target_values, y_pred=q_values)
+        q_loss = tf.nn.compute_average_loss(q_losses)
+    q_gradients = tape.gradient(q_loss, q.trainable_weights)
+    q_optimizer.apply_gradients(zip(
+        q_gradients,
+        q.trainable_weights
+    ))
+
+    return q_values, q_losses
+
+'''
+[francesco]
+Effettua un passo di allenamento di entrambe le funzioni q
+RESTITUISCE: valori calcolati e perdite di entrambe le q (vedi trainingstep_single_q),
+per (eventuali futuri, forse) fini statistici
+'''
+def trainingstep_q(
+    q1, q2,
+    batch,
+    policy,
+    q1_targ, q2_targ,
+    alpha, gamma,
+    q1_optimizer, q2_optimizer
+):
+    q_targets = compute_q_targets(q1_targ, q2_targ, batch, policy, alpha, gamma)
+
+    q1_values, q1_losses = trainingstep_single_q(q1, batch, target_values, q1_optimizer)
+    q2_values, q2_losses = trainingstep_single_q(q2, batch, target_values, q2_optimizer)
+
+    q_values = [q1_values, q2_values]
+    q_losses = [q1_losses, q2_losses]
+    return q_values, q_losses
+
+'''
 [francesco]
 Effettua un passo di allenamento della policy:
 data una batch di osservazioni, campiona le azioni corrispondenti
 e usa la funzione q e le probabilità di quelle azioni
 per calcolare la perdita secondo le equazioni del paper,
 infine calcola il gradiente della perdita e lo usa per aggiornare i pesi.
+
+RESTITUISCE: la perdita per ciascuna osservazione,
+per (eventuali futuri, forse) fini statistici
 '''
 def trainingstep_policy(policy, batch, q1, q2, alpha, policy_optimizer):
-    # TODO [francesco]
-    # Ancora non so come conserveremo le funzioni q,
-    # provvisoriamente ho presunto due variabili q1 e q2 per semplicità
-    # (specialmente per il trainingstep delle q)
-    # perché qualcosa devo scrivere,
-    # ma possiamo anche decidere di fare una lista/tupla di funzioni q
-    # per fare un progetto più generalizzato
-
     # Recupera le osservazioni dalla batch
     observations = batch[replay_buffer.OBSERVATIONS]
 
@@ -70,7 +143,7 @@ def trainingstep_policy(policy, batch, q1, q2, alpha, policy_optimizer):
     ))
 
     # Calcola il gradiente della perdita rispetto ai pesi della policy
-    policy_gradiets = tape.gradient(policy_loss, policy.trainable_weights)
+    policy_gradients = tape.gradient(policy_loss, policy.trainable_weights)
 
     # Infine applica i gradienti con l'optimizer per aggiornare i pesi della policy
     policy_optimizer.apply_gradients(zip(

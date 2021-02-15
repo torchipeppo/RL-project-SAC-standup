@@ -16,6 +16,7 @@ batch_size
 alpha
 q_lr
 policy_lr
+gamma
 '''
 
 ### "Copiare" spinningup r.137~148
@@ -70,7 +71,8 @@ max_episode_duration = 1000
 steps_without_training = 1000    # aspettiamo ad allenarci, in modo da riempire il buffer
 training_period = 50
 batch_size = 100
-alpha = 0.2
+alpha = 0.2   # temperatura
+gamma = 0.99  # discount factor
 
 # cronometraggio semplice
 start_time = time.time()
