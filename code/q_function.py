@@ -2,16 +2,49 @@
 Modulo per una funzione q
 
 Proprietà/Metodi rilevanti:
- - values [TODO]
- - trainable_variables [TODO]
+ - values
+ - trainable_variables
 '''
 
 import tensorflow as tf
 import tensorflow.keras as keras
 
 class Q_Function:
-    def __init__(self, ...):
-        pass
+    def __init__(
+        self,
+        observation_space,  #spazio d'osservazione (secondo l'interfaccia di openai gym)
+        action_space,       #spazio d'azione (secondo l'interfaccia di openai gym)
+        hidden_layer_sizes=(256,256),   #vedi _make_model
+        hidden_acti="relu",             #vedi _make_model
+        pseudo_output_acti="linear"     #vedi _make_model
+    ):
+        # estraggo i parametri rilevanti dagli spazi di osservazione e azione
+        self._observation_shape = observation_space.shape;    # FYI: nel nostro caso è (376,)
+        self._action_shape = action_space.shape;    # FYI: nel nostro caso, è (17,)
+
+        # crea il modello
+        self.q_model = _make_model(observation_shape, action_shape, hidden_layer_sizes, hidden_acti, output_acti)
+
+    '''
+    Espone i parametri allenabili della NN (con un paio di alias)
+    '''
+    @property
+    def trainable_weights(self):
+        return self.q_model.trainable_weights
+    @property
+    def trainable_variables(self):
+        return self.trainable_weights
+    @property
+    def trainable_parameters(self):
+        return self.trainable_weights
+
+    '''
+    Data una batch di osservazioni e di azioni, RESTITUISCE i valori q
+    corrispondenti a ciascuna coppia osservazione-azione.
+    '''
+    def values(self, observations, actions):
+        vals = self.q_model((observations, actions))
+        return vals
 
 '''
 Crea una rete neurale che prende in ingresso una (batch di) coppia
