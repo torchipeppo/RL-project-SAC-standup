@@ -26,6 +26,7 @@ M_CONFIG = {
     "save_period": 10,
     "test_eps_no": 10,
     "hidden_layer_sizes": (256,256),
+    "use_monitor": True,
 }
 
 # una configurazione più piccola
@@ -41,6 +42,17 @@ S_CONFIG = {
     "save_period": 10,
     "test_eps_no": 3,
     "hidden_layer_sizes": (64,64),
+    "use_monitor": True,
+}
+
+# una configurazione stupidamente piccola, a solo scopo di test
+T_CONFIG = {
+    "epochs": 1,
+    "steps_per_epoch": 1000,
+    "max_episode_duration": 500,
+    "test_eps_no": 1,
+    "warmup_steps": 5000,
+    "use_monitor": True,
 }
 
 # un dizionario unico per selezionare una configurazione
@@ -48,20 +60,29 @@ S_CONFIG = {
 CONFIGS = {
     "M": M_CONFIG,
     "S": S_CONFIG,
+    "T": T_CONFIG,
 }
 
 # Gestione command-line
-parser = argparse.ArgumentParser(
-    description="A SAC implementation. "
-    "Possible config choices right now are M and S, "
-    "but check CONFIGS in the source code to be sure"
+parser = argparse.ArgumentParser(description="A SAC implementation.")
+parser.add_argument(
+    "config",
+    help='Select config. '
+         "Possible config choices right now are M and S, "
+         "but check CONFIGS in the source code to be sure"
 )
-parser.add_argument("config")
+parser.add_argument(
+    '--dont-record',
+    action='store_true',
+    help="Specify to exclode recording (and save lots of time)"
+)
 args = parser.parse_args()
 config = args.config.upper()
 
 # selezione configurazione
 sac_args = CONFIGS[config]
+if args.dont_record:
+    sac_args["use_monitor"] = False
 
 # importiamo sac all'ultimo momento,
 # così se sbagliamo la command line

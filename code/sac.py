@@ -34,7 +34,8 @@ class SAC:
         tau = 0.005,     # parametro peso per l'update delle q_targ
         save_period = 10,   # frequenza in epoch con cui salvare i modelli
         test_eps_no = 10,    # numero di episodi di test da svolgere alla fine di ogni epoch
-        hidden_layer_sizes=(256,256)   # (numero e) dimensioni delle layer nascoste di tutti i modelli
+        hidden_layer_sizes = (256,256),   # (numero e) dimensioni delle layer nascoste di tutti i modelli
+        use_monitor = True      # decide se usare il monitor di gym o no. Il monitor registra alcuni episodi e scrive altre statistiche.
     ):
         # Creiamo due environment: uno per il training e uno per il test
         self.env = gym.make(env_name)
@@ -94,6 +95,12 @@ class SAC:
         )
         self.base_save_path = path_constants.REPO_ROOT / "saves" / unique_subdir_name
         self.base_save_path.mkdir()
+        # prepariamo i monitor se richiesti
+        if use_monitor:
+            monitor_path = self.base_save_path / "monitor"
+            self.env = gym.wrappers.Monitor(self.env, directory=monitor_path, force=True)
+            test_monitor_path = self.base_save_path / "test_monitor"
+            self.test_env = gym.wrappers.Monitor(self.test_env, directory=test_monitor_path, force=True)
 
     def go_train(self):
         # prima di cominciare, delle ultime inizializzazioni
@@ -178,6 +185,7 @@ class SAC:
         ### FINE LOOP PRINCIPALE
 
         self.env.close()
+        self.test_env.close()
 
     '''
     Funzioni ausiliarie
