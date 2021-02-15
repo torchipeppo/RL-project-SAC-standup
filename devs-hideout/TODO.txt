@@ -12,6 +12,9 @@
 [*] Sistemare salvataggio
 [*] Un po' di sano refactor
 
-[ ] main con configurazioni
+[*] main con configurazioni
+[ ] indagare sulla registrazione degli episodi
 
 [ ] esperimenti esperimenti esperimenti esperimenti
+
+[ ] ripulire
