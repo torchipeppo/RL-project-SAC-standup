@@ -235,30 +235,26 @@ class SAC:
 
     def save_everything(self, save_path, suffix):
         # TODO devo fare __getstate__ e __setstate__
-        return
+        # return
         # il codice seguente è ora deprecato
         import pickle
         if not save_path.exists():
             save_path.mkdir()
-        _q1_ = self.q1.create_deepcopy()
         with open(save_path/"q1{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(_q1_, f)
+            pickle.dump(self.q1, f)
         with open(save_path/"q2{}.pkl".format(suffix), "wb") as f:
             pickle.dump(self.q2, f)
         with open(save_path/"policy{}.pkl".format(suffix), "wb") as f:
             pickle.dump(self.policy, f)
         with open(save_path/"q1targ{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(self.q1targ, f)
+            pickle.dump(self.q1_targ, f)
         with open(save_path/"q2targ{}.pkl".format(suffix), "wb") as f:
-            pickle.dump(self.q2targ, f)
+            pickle.dump(self.q2_targ, f)
         with open(save_path/"replaybuffer{}.pkl".format(suffix), "wb") as f:
             pickle.dump(self.replay_buffer, f)
-        # poi ho l'impressione che dovrei salvare i modelli separatamente, per sicurezza
-        self.policy.means_and_sigmas_model.save(save_path/"policy{}.h5".format(suffix))
-        self.q1.q_model.save(save_path/"q1{}.h5".format(suffix))
-        self.q2.q_model.save(save_path/"q2{}.h5".format(suffix))
-        self.q1targ.q_model.save(save_path/"q1targ{}.h5".format(suffix))
-        self.q2targ.q_model.save(save_path/"q2targ{}.h5".format(suffix))
+        # ora non ho più bisogno di salvare i modelli separatamente
+        # perché picklo pesi e configurazioni in __getstate__
+        # e ripristino tutto in __setstate__
 
     # in realtà questa è praticamente "statica"
     def simple_episode_info_dump(self, logfpath, episode_length, episode_return):

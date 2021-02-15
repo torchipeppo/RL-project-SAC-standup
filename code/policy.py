@@ -269,6 +269,29 @@ class Policy:
         twin._deterministic = True
         return twin
 
+    '''
+    vedi q_function
+    '''
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        ms_model = state.pop("means_and_sigmas_model")
+        state.update({
+            "ms_model_config": ms_model.get_config(),
+            "ms_model_weights": ms_model.get_weights(),
+        })
+        return state
+
+    '''
+    vedi q_function
+    '''
+    def __setstate__(self, state):
+        ms_model_config = state.pop("ms_model_config")
+        ms_model_weights = state.pop("ms_model_weights")
+        ms_model = keras.Model.from_config(ms_model_config)
+        ms_model.set_weights(ms_model_weights)
+        state["means_and_sigmas_model"] = ms_model
+        self.__dict__ = state
+
 '''
 Crea una rete neurale che prende in ingresso una o più osservazioni
 e restituisce i parametri corrispondenti della gaussiana.
@@ -325,10 +348,10 @@ def _make_model(observation_shape, hidden_sizes, action_shape, hidden_acti, pseu
     common = pseudo_output_layer(common)
 
     # Separa lo pseudo output a metà: le medie da una parte, le deviazioni dall'altra
-    split_a_layer = lambda x: tf.split(x, num_or_size_splits=2, axis=-1)
+    # split_a_layer = lambda x: tf.split(x, num_or_size_splits=2, axis=-1)
     means, sigmas_noact = kl.Lambda(split_a_layer)(common)
     # Applica una attivazione softplus alle deviazioni standard
-    softplus_epsilon = lambda x: tf.math.softplus(x)+0.00001
+    # softplus_epsilon = lambda x: tf.math.softplus(x)+0.00001
     sigmas = kl.Lambda(softplus_epsilon)(sigmas_noact)
 
     # Crea il modello finale
@@ -336,3 +359,9 @@ def _make_model(observation_shape, hidden_sizes, action_shape, hidden_acti, pseu
 
     # Restituiscilo
     return model
+
+def split_a_layer(x):
+    return tf.split(x, num_or_size_splits=2, axis=-1)
+
+def softplus_epsilon(x):
+    return tf.math.softplus(x)+0.00001

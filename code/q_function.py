@@ -67,6 +67,39 @@ class Q_Function:
         twin.q_model.set_weights(self.q_model.get_weights())
         return twin
 
+    '''
+    decide cosa salvare in fase di pickling
+    il fatto è che non possiamo picklare il modello,
+    e se anche si potesse probabilmente uscirebbe male
+    '''
+    def __getstate__(self):
+        # lo stato da salvare è praticamente quello di default...
+        state = self.__dict__.copy()
+        # eccetto che bisogna escludere il modello...
+        q_model = state.pop("q_model")
+        # e al suo posto ci aggiungiamo le informazioni utili a ricrearlo successivamente
+        state.update({
+            "q_model_config": q_model.get_config(),
+            "q_model_weights": q_model.get_weights(),
+        })
+        return state
+
+    '''
+    dice come ricostruire l'oggetto in fase di unpickling
+    '''
+    def __setstate__(self, state):
+        # recupera config e pesi ed eliminali dal dizionario di stato
+        q_model_config = state.pop("q_model_config")
+        q_model_weights = state.pop("q_model_weights")
+        # ricostruisci il modello sulla base di quelle informazioni
+        q_model = keras.Model.from_config(q_model_config)
+        q_model.set_weights(q_model_weights)
+        # inserisci il modello nel dizionario di stato...
+        state["q_model"] = q_model
+        # ...e assegna il dizionario di stato al nuovo oggetto,
+        # completando il caricamento
+        self.__dict__ = state
+
 '''
 Crea una rete neurale che prende in ingresso una (batch di) coppia
 osservazione azione e restutisce il (batch di) valore Q corrispondente
