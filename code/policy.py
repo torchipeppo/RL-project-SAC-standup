@@ -212,6 +212,28 @@ class Policy:
         return actions, logprobs
 
     '''
+    Restituisce l'azione corrispondente a una singola osservazione,
+    perché il modello vuole necessariamente l'asse della batch.
+    RESTITUISCE: l'azione, nel tipo specificato da return_numpy
+    '''
+    def compute_action(self, observation, return_numpy=True):
+        # observation è una riga,
+        # dobbiamo trasformarlo in una MATRICE RIGA
+        # affinché il modello se lo prenda senza fare storie
+        obs_pseudo_batch = observation[np.newaxis, ...]
+        # ADESSO possiamo chiamare il modello (col metodo che già abbiamo,
+        # così abbiamo pure tutto il postprocessing)...
+        act_pseudo_batch, _ = self.compute_actions_and_logprobs(obs_pseudo_batch)
+        # e adesso estraiamo l'azione  desiderata.
+        # anche act_pseudo_batch è una MATRICE RIGA,
+        # mentre io voglio solo la riga
+        action = act_pseudo_batch[0]
+        if return_numpy:
+            return action.numpy()
+        else:
+            return action
+
+    '''
     Crea una copia profonda della policy, tranne che è deterministica.
     N.B.: Trattandosi di una copia profonda, una volta creata NON si aggiornerà
           automaticamente mentre la policy originale si allena.

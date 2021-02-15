@@ -23,6 +23,8 @@ action_space = gym.spaces.Box(act_lo, act_hi)
 # E ora la policy
 polisi = policy_module.Policy(observation_space, action_space)
 
+print(polisi.means_and_sigmas_model.summary())
+
 # Se superiamo questo punto, vuol dire che __init__ è almeno "compilabile".
 print()
 print("---------- EVVIVA ----------")
@@ -83,6 +85,15 @@ print(polisi.trainable_weights[-2])
 print(polisi_det.trainable_weights[-2])
 print(polisi.trainable_weights[-2] == polisi_det.trainable_weights[-2])
 # pare di sì
+
+print("----- NUOVA COSA -----")
+
+# proviamo al volo il nuovo metodo "action"
+# lo faccio con la policy deterministica, così posso controllare che
+# esca lo stesso risultato
+act0 = polisi_det.compute_action(oss0)
+print(act0)
+# evviva!
 
 # Ovviamente adesso i valori numerici puri non c'azzeccano niente,
 # ma voglio solo controllare che i metodi si eseguano senza problemi
