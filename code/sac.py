@@ -1,4 +1,7 @@
+import numpy as np
 import tensorflow as tf
+import gym
+import time
 import policy as policy_module
 import q_function as q_fn_module
 import replay_buffer as replay_buffer_module
@@ -19,6 +22,7 @@ alpha
 q_lr
 policy_lr
 gamma
+tau
 '''
 
 ### "Copiare" spinningup r.137~148
@@ -28,7 +32,7 @@ env = gym.make(env_name)
 test_env = gym.make(env_name)
 # Inizializziamo i seed a un valore fisso, per ripetibilità
 seed=14383421
-tf.set_random_seed(seed)
+tf.random.set_seed(seed)
 np.random.seed(seed)
 env.seed(seed)
 test_env.seed(seed)
@@ -41,11 +45,11 @@ act_dim = env.action_space.shape[0]
 # ac_kwargs['action_space'] = env.action_space
 
 ### Creare 5 reti neurali: q1, q2, policy, q1_targ, q2_targ (come modelli Keras)
-q1 = q_fn_module.Q_Function(env.observation_space, anv.action_space)
-q2 = q_fn_module.Q_Function(env.observation_space, anv.action_space)
+q1 = q_fn_module.Q_Function(env.observation_space, env.action_space)
+q2 = q_fn_module.Q_Function(env.observation_space, env.action_space)
 policy = policy_module.Policy(env.observation_space, env.action_space)
-q1_targ = __???__  # TODO prima devo fare una funzione che fa una deepcopy della q
-q2_targ = __???__
+q1_targ = q1.create_deepcopy()
+q2_targ = q2.create_deepcopy()
 
 ### Creare il replay buffer
 buffer_size = 1000000
@@ -77,12 +81,16 @@ training_period = 50
 batch_size = 100
 alpha = 0.2   # temperatura
 gamma = 0.99  # discount factor
+tau = 0.005   # peso per l'update delle q_targ
 
 # cronometraggio semplice
 start_time = time.time()
 
 ### INIZIO LOOP PRINCIPALE
 for t in range(total_steps):
+    # stampa
+    if t%100==0:
+        print("Step {}".format(t))
 
     ### Ottieni la prossima azione da eseguire.
     if t > warmup_steps:

@@ -40,7 +40,7 @@ def compute_q_targets(q1_targ, q2_targ, batch, policy, alpha, gamma):
     next_q_targ_values = tf.reduce_min((next_q1_targ_values, next_q2_targ_values), axis=0)
 
     # applichiamo l'equazione per il soft value
-    next_values = next_q_values - alpha*next_logprobs
+    next_values = next_q_targ_values - alpha*next_logprobs
 
     # castiamo per compatibilità con la prossima espressione
     dones = tf.cast(dones, next_values.dtype)
@@ -89,7 +89,7 @@ def trainingstep_q(
     alpha, gamma,
     q1_optimizer, q2_optimizer
 ):
-    q_targets = compute_q_targets(q1_targ, q2_targ, batch, policy, alpha, gamma)
+    target_values = compute_q_targets(q1_targ, q2_targ, batch, policy, alpha, gamma)
 
     q1_values, q1_losses = trainingstep_single_q(q1, batch, target_values, q1_optimizer)
     q2_values, q2_losses = trainingstep_single_q(q2, batch, target_values, q2_optimizer)
