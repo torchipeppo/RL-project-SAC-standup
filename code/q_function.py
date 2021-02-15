@@ -2,7 +2,7 @@
 Modulo per una funzione q
 
 Proprietà/Metodi rilevanti:
- - values
+ - compute_q_values
  - trainable_variables
 '''
 
@@ -16,14 +16,17 @@ class Q_Function:
         action_space,       #spazio d'azione (secondo l'interfaccia di openai gym)
         hidden_layer_sizes=(256,256),   #vedi _make_model
         hidden_acti="relu",             #vedi _make_model
-        pseudo_output_acti="linear"     #vedi _make_model
+        output_acti="linear"     #vedi _make_model
     ):
         # estraggo i parametri rilevanti dagli spazi di osservazione e azione
         self._observation_shape = observation_space.shape;    # FYI: nel nostro caso è (376,)
         self._action_shape = action_space.shape;    # FYI: nel nostro caso, è (17,)
 
         # crea il modello
-        self.q_model = _make_model(observation_shape, action_shape, hidden_layer_sizes, hidden_acti, output_acti)
+        self.q_model = _make_model(
+            self._observation_shape, self._action_shape,
+            hidden_layer_sizes, hidden_acti, output_acti
+        )
 
     '''
     Espone i parametri allenabili della NN (con un paio di alias)
@@ -42,7 +45,7 @@ class Q_Function:
     Data una batch di osservazioni e di azioni, RESTITUISCE i valori q
     corrispondenti a ciascuna coppia osservazione-azione.
     '''
-    def values(self, observations, actions):
+    def compute_q_values(self, observations, actions):
         vals = self.q_model((observations, actions))
         return vals
 
@@ -59,7 +62,8 @@ def _make_model(observation_shape, action_shape, hidden_sizes, hidden_acti, outp
     kl = keras.layers
 
     # Crea layer di input
-    imput_layers = (kl.Input(shape=observation_shape), kl.Input(shape=action_shape))
+    input_layers = [kl.Input(shape=observation_shape), kl.Input(shape=action_shape)]
+    concatenate_layer = kl.Concatenate()
 
     # TODO potremmo aver bisogno del cast_and_concat perché mi pare di capire che le osservazioni siano float64 mentre le azioni float32
     # (vedi: https://github.com/rail-berkeley/softlearning/blob/master/softlearning/utils/tensorflow.py#L32)
@@ -72,6 +76,7 @@ def _make_model(observation_shape, action_shape, hidden_sizes, hidden_acti, outp
 
     # Costruiamo tutto il modello
     out = input_layers
+    out = concatenate_layer(out)
     for hl in hidden_layers:
         out = hl(out)
     out = output_layer(out)
