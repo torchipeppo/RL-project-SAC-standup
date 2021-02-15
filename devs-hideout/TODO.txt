@@ -2,9 +2,11 @@
 [*] Modulo per la policy [softlearning base_policy gaussian_policy]
 
 [*] Replay buffer [spinningup]
-[ ] Allenamento q
-[.] Allenamento policy
-[ ] Aggiornamento q_targ
+[*] Allenamento q
+[*] Allenamento policy
+[*] Aggiornamento q_targ
 
-[ ] Loop principale (dall'inizio)
-[ ] Loop principale (dalla fine) (incluso env.close)
+[ ] Loop principale
+
+[*] Sistemare salvataggio
+[ ] Un po' di sano refactor
