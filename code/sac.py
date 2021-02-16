@@ -121,7 +121,7 @@ class SAC:
         for t in range(self.total_steps):
             # stampa
             if t%100==0:
-                print("Step {}".format(t))
+                print("Epoch {}/{} Step {}/{}".format(epoch, self.epochs, t, self.total_steps))
 
             ### Ottieni la prossima azione da eseguire.
             if t > self.warmup_steps:
@@ -169,11 +169,18 @@ class SAC:
 
                 # salviamo le NN ogni tanto
                 if epoch%self.save_period==0 or epoch==self.epochs:  # salviamo sempre all'ultima epoch
-                    self.save_everything(this_epoch_save_path/"models",  "_ep{}".format(epoch-1))
+                    print("    Salvataggio in corso...")
+                    # self.save_everything(this_epoch_save_path/"models",  "_ep{}".format(epoch-1))
                     # -1 perché adesso epoch è aggiornato all'epoch successiva,
                     # ma questo salvataggio riguarda quella appena conclusa.
                     # stesso motivo per cui non abbiamo ancora aggiornato
                     # this_epoch_save_path.
+                    ########
+                    # mi sono accorto che devo salvare solo i modelli più recenti,
+                    # altrimenti esaurisco lo spazio su disco
+                    self.save_everything(self.base_save_path/"models",  "")
+                    # faccio in modo di dare lo stesso nome, così open("wb")
+                    # sovrascrive
 
                 # facciamo dei test col modello deterministico ogni tanto
                 self.do_tests(this_epoch_save_path)
@@ -211,7 +218,8 @@ class SAC:
     def do_tests(self, base_save_path):
         # qui conviene accedere direttamente all'Agent
         deterministic_policy = self.the_agent.policy.create_deterministic_policy()
-        for _ in range(self.test_eps_no):
+        for e in range(self.test_eps_no):
+            print("    Episodio di test {}/{}...".format(e, test_eps_no))
             # reset
             obs = self.test_env.reset()
             episode_return = 0
