@@ -13,7 +13,7 @@ import argparse
 
 # considerata "standard" in fase di stesura,
 # ma troppo impegnativa per la mia VM
-# saenza accesso alla scheda grafica
+# senza accesso alla scheda grafica
 M_CONFIG = {
     "buffer_size": 1000000,
     "epochs": 100,
@@ -45,6 +45,22 @@ S_CONFIG = {
     "use_monitor": True,
 }
 
+# una configurazione ancora più piccola, per la mia povera VM
+XS_CONFIG = {
+    "buffer_size": 500000,
+    "epochs": 100,
+    "steps_per_epoch": 1000,
+    "max_episode_duration": 1000,
+    "warmup_steps": 2500,
+    "steps_without_training": 1000,
+    "training_period": 50,
+    "batch_size": 50,
+    "save_period": 10,
+    "test_eps_no": 2,
+    "hidden_layer_sizes": (32,32),
+    "use_monitor": True,
+}
+
 # una configurazione stupidamente piccola, a solo scopo di test
 T_CONFIG = {
     "epochs": 1,
@@ -60,6 +76,7 @@ T_CONFIG = {
 CONFIGS = {
     "M": M_CONFIG,
     "S": S_CONFIG,
+    "XS": XS_CONFIG,
     "T": T_CONFIG,
 }
 

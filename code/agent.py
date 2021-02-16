@@ -15,6 +15,7 @@ import tensorflow as tf
 import pickle
 import q_function as q_fn_module
 import policy as policy_module
+import replay_buffer as repbuf_module # per le costanti
 
 class Agent:
     def __init__(
@@ -61,9 +62,9 @@ class Agent:
     '''
     def compute_q_targets(self, batch):
         # recuperiamo dati dalla batch
-        next_observations = batch['next_observations']
-        rewards = batch['rewards']
-        dones = batch['dones']
+        next_observations = batch[repbuf_module.NEXT_OBSERVATIONS]
+        rewards = batch[repbuf_module.REWARDS]
+        dones = batch[repbuf_module.DONES]
 
         # prediciamo le azioni corrispondenti alle osservazioni future
         next_actions, next_logprobs = self.policy.compute_actions_and_logprobs(next_observations)
@@ -92,8 +93,8 @@ class Agent:
     #`perché viene chiamata una volta per q1 e una volta per q2`
     def trainingstep_single_q(self, q, batch, target_values, q_optimizer):
         # recupera dati dalla batch
-        observations = batch['observations']
-        actions = batch['actions']
+        observations = batch[repbuf_module.OBSERVATIONS]
+        actions = batch[repbuf_module.ACTIONS]
 
         # applica una loss MSE standard: calcola le predizioni della NN,
         # calcola il MSE rispetto ai bersagli, poi considera la perdita
@@ -117,10 +118,10 @@ class Agent:
     per (eventuali futuri, forse) fini statistici
     '''
     def trainingstep_q(self, batch):
-        target_values = compute_q_targets(batch)
+        target_values = self.compute_q_targets(batch)
 
-        q1_values, q1_losses = trainingstep_single_q(self.q1, batch, target_values, self.q1_optimizer)
-        q2_values, q2_losses = trainingstep_single_q(self.q2, batch, target_values, self.q2_optimizer)
+        q1_values, q1_losses = self.trainingstep_single_q(self.q1, batch, target_values, self.q1_optimizer)
+        q2_values, q2_losses = self.trainingstep_single_q(self.q2, batch, target_values, self.q2_optimizer)
 
         q_values = [q1_values, q2_values]
         q_losses = [q1_losses, q2_losses]
@@ -139,7 +140,7 @@ class Agent:
     '''
     def trainingstep_policy(self, batch):
         # Recupera le osservazioni dalla batch
-        observations = batch[replay_buffer.OBSERVATIONS]
+        observations = batch[repbuf_module.OBSERVATIONS]
 
         # Definiamo la funzione di cui calcolare il gradiente
         # grazie al GradientTape di tf
@@ -198,8 +199,8 @@ class Agent:
     RESTITUISCE: None
     '''
     def updatestep_q_targ(self):
-        updatestep_single_q_targ(self.q1, self.q1_targ, self.tau)
-        updatestep_single_q_targ(self.q2, self.q2_targ, self.tau)
+        self.updatestep_single_q_targ(self.q1, self.q1_targ)
+        self.updatestep_single_q_targ(self.q2, self.q2_targ)
 
     '''
     esegue un singolo passo di training

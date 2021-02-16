@@ -221,7 +221,7 @@ class SAC:
         # qui conviene accedere direttamente all'Agent
         deterministic_policy = self.the_agent.policy.create_deterministic_policy()
         for e in range(self.test_eps_no):
-            print("    Episodio di test {}/{}...".format(e, test_eps_no))
+            print("    Episodio di test {}/{}...".format(e, self.test_eps_no))
             # reset
             obs = self.test_env.reset()
             episode_return = 0
