@@ -61,6 +61,22 @@ XS_CONFIG = {
     "use_monitor": True,
 }
 
+# variante della precedente, un pochino più grande
+VS_CONFIG = {
+    "buffer_size": 500000,
+    "epochs": 175,
+    "steps_per_epoch": 1000,
+    "max_episode_duration": 1000,
+    "warmup_steps": 2500,
+    "steps_without_training": 1000,
+    "training_period": 50,
+    "batch_size": 50,
+    "save_period": 10,
+    "test_eps_no": 1,
+    "hidden_layer_sizes": (64,64),
+    "use_monitor": True,
+}
+
 # una configurazione stupidamente piccola, a solo scopo di test
 T_CONFIG = {
     "epochs": 1,
@@ -77,6 +93,7 @@ CONFIGS = {
     "M": M_CONFIG,
     "S": S_CONFIG,
     "XS": XS_CONFIG,
+    "VS": VS_CONFIG,
     "T": T_CONFIG,
 }
 

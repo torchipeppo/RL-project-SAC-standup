@@ -98,9 +98,19 @@ class SAC:
         # prepariamo i monitor se richiesti
         if use_monitor:
             monitor_path = self.base_save_path / "monitor"
-            self.env = gym.wrappers.Monitor(self.env, directory=monitor_path, force=True)
+            self.env = gym.wrappers.Monitor(
+                self.env,
+                directory=monitor_path,
+                video_callable=capped_quadratic_video_schedule,
+                force=True
+            )
             test_monitor_path = self.base_save_path / "test_monitor"
-            self.test_env = gym.wrappers.Monitor(self.test_env, directory=test_monitor_path, force=True)
+            self.test_env = gym.wrappers.Monitor(
+                self.test_env,
+                directory=test_monitor_path,
+                video_callable=capped_quadratic_video_schedule,
+                force=True
+            )
 
     def go_train(self):
         # prima di cominciare, delle ultime inizializzazioni
@@ -238,6 +248,14 @@ class SAC:
                 if episode_duration >= self.max_episode_duration:
                     done=True
             self.simple_episode_info_dump(base_save_path/"test_ep_stats.txt", episode_duration, episode_return)
+
+# se passata al Monitor come argomento video_callable,
+# registra ogni episodio quadrato anziché ogni cubo.
+def capped_quadratic_video_schedule(episode_id):
+    if episode_id < 1000:
+        return int(round(episode_id ** (1. / 2))) ** 2 == episode_id
+    else:
+        return episode_id % 1000 == 0
 
 
 
