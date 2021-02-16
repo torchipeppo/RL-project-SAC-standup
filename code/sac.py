@@ -163,7 +163,6 @@ class SAC:
             ### Nell'ultimo timestep di ogni epoch, potremmo voler calcolare e stampare qualche metrica, e fare altre operazioni
             if (t+1)%self.steps_per_epoch==0:
                 print("Epoch {}/{} completata".format(epoch, self.epochs))
-                print("    Tempo totale: {}".format(time.time()-start_time))
 
                 epoch = (t+1) // self.steps_per_epoch
 
@@ -188,6 +187,9 @@ class SAC:
                 # aggiornamento path
                 this_epoch_save_path = self.base_save_path / "ep{}".format(epoch)
                 this_epoch_save_path.mkdir()
+
+                # tempo totale di questa epoch
+                print("    Tempo totale: {}".format(time.time()-start_time))
 
         ### FINE LOOP PRINCIPALE
 
