@@ -26,6 +26,7 @@ class Policy:
     ):
         # mi salvo i parametri dato che devo clonare quest'oggetto
         # per fare la policy deterministica
+        # TODO ormai non dovrebbe servire più
         self._args = {
             "observation_space": observation_space,
             "action_space": action_space,
@@ -38,7 +39,7 @@ class Policy:
         # essere campionate dalla distribuzione con le medie e varianze
         # date dalla NN, o se invece debba restituire  direttamente le medie,
         # per avere un comportamento più deterministico.
-        # in fase di valutazione potremmo volere la possibilità di chiedere
+        # in fase di valutazione vogliamo la possibilità di chiedere
         # alla policy tale comportamento deterministico per valutarla meglio.
         self._deterministic = False
 
@@ -81,9 +82,9 @@ class Policy:
             self._action_scale = 1
 
         # la NN della policy.
-        # prende in ingresso un'osservazione (o più) e restituisce
+        # prende in ingresso una batch di osservazioni e restituisce
         # medie e varianze per la distribuzione parametrica da campionare
-        # per ottenere l'azione corrispondente all'osservazione.
+        # per ottenere le azioni corrispondenti alle osservazioni.
         self.means_and_sigmas_model = _make_model(
             self._observation_shape, hidden_layer_sizes, self._action_shape,
             hidden_acti, pseudo_output_acti
@@ -168,7 +169,7 @@ class Policy:
         means, sigmas = self.means_and_sigmas_model(observations)
 
         if self._deterministic:
-            # Allora eseguiamo sempre l'azione media, in modo deterministico (per l'appunto)
+            # Allora eseguiamo sempre l'azione media, in modo deterministico (per l'appunto).
             # rimane solo clampare (e scalare se così abbiamo deciso)
             actions = self._clamp_and_maybe_scale_actions_bijector(means)
             # Siamo nel caso deterministico: la "probabilità di scegliere quest'azione"

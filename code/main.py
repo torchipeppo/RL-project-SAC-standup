@@ -8,7 +8,7 @@ quale config usare.
 # import sac as sac_module   # non qui, vedi verso la fine
 import argparse
 
-# definiamo un paio di dizionari che corrispondono
+# definiamo un po' di dizionari che corrispondono
 # a diversi parametri per SAC ("configurazioni")
 
 # considerata "standard" in fase di stesura,
@@ -108,7 +108,7 @@ parser.add_argument(
 parser.add_argument(
     '--dont-record',
     action='store_true',
-    help="Specify to exclode recording (and save lots of time)"
+    help="Specify to exclude recording (and save some time)"
 )
 args = parser.parse_args()
 config = args.config.upper()

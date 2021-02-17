@@ -4,7 +4,7 @@ Questo modulo contiene gli oggetti per le q e la policy
 e tutte le funzioni che le riguardano, tipo il training.
 
 Questa classe non è pensata come un modulo stagno,
-SAC potrà accedere a tutti i suoi membri in caso serva
+SAC potrà accedere a tutti i suoi membri in caso di necessità
 (ma lo farà sempre soltanto in lettura)
 
 TODO Non sono convintissimo del nome, ma sono in tempo a cambiarlo se è.
@@ -74,13 +74,13 @@ class Agent:
         next_q_targ_values = tf.reduce_min((next_q1_targ_values, next_q2_targ_values), axis=0)
 
         # applichiamo l'equazione per il soft value
-        next_values = next_q_targ_values - self.alpha*next_logprobs
+        next_v_values = next_q_targ_values - self.alpha*next_logprobs
 
         # castiamo per compatibilità con la prossima espressione
-        dones = tf.cast(dones, next_values.dtype)
+        dones = tf.cast(dones, next_v_values.dtype)
 
         # equazione per calcolare Q_hat
-        targets = rewards + self.gamma*next_values
+        targets = rewards + self.gamma*(1-dones)*next_v_values
 
         return tf.stop_gradient(targets)
 

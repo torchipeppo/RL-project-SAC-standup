@@ -49,7 +49,7 @@ class SAC:
         # TODO in teoria non serve salvarsele con self., ma me ne occupo post-refactor
         self.obs_dim = self.env.observation_space.shape[0]
         self.act_dim = self.env.action_space.shape[0]
-        # le 5 NN e il rapley buffer sono stati spostati nel nuovo modulo:
+        # le 5 NN e il repley buffer sono stati spostati nel nuovo modulo:
         self.the_agent = agent_module.Agent(
             self.env.observation_space, self.env.action_space,
             hidden_layer_sizes,
