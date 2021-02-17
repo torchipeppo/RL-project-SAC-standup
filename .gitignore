@@ -2,3 +2,4 @@
 __pycache__
 path_constants.py
 saves/*
+.ipynb_checkpoints
