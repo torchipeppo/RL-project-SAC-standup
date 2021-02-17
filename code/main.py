@@ -77,6 +77,22 @@ VS_CONFIG = {
     "use_monitor": True,
 }
 
+# ulteriore variante
+VS256_CONFIG = {
+    "buffer_size": 500000,
+    "epochs": 175,
+    "steps_per_epoch": 1000,
+    "max_episode_duration": 1000,
+    "warmup_steps": 8000,
+    "steps_without_training": 1000,
+    "training_period": 50,
+    "batch_size": 50,
+    "save_period": 10,
+    "test_eps_no": 1,
+    "hidden_layer_sizes": (256,256),
+    "use_monitor": True,
+}
+
 # una configurazione stupidamente piccola, a solo scopo di test
 T_CONFIG = {
     "epochs": 1,
@@ -95,6 +111,7 @@ CONFIGS = {
     "S": S_CONFIG,
     "XS": XS_CONFIG,
     "VS": VS_CONFIG,
+    "VS256": VS256_CONFIG,
     "T": T_CONFIG,
 }
 
