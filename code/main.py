@@ -83,7 +83,8 @@ T_CONFIG = {
     "steps_per_epoch": 1000,
     "max_episode_duration": 500,
     "test_eps_no": 1,
-    "warmup_steps": 5000,
+    "warmup_steps": 800,
+    "steps_without_training": 800,
     "use_monitor": True,
 }
 

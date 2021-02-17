@@ -17,6 +17,11 @@ import q_function as q_fn_module
 import policy as policy_module
 import replay_buffer as repbuf_module # per le costanti
 
+# costanti per il dizionario restituito da trainingstep
+Q1_LOSS = "q1_loss"
+Q2_LOSS = "q2_loss"
+POLICY_LOSS = "policy_loss"
+
 class Agent:
     def __init__(
         self,
@@ -86,7 +91,7 @@ class Agent:
 
     '''
     Passo di allenamento di una singola q
-    RESTITUISCE: valore q e perdita per ciascuna coppia osservazione-azione,
+    RESTITUISCE: la perdita media,
     per (eventuali futuri, forse) fini statistici
     '''
     # Nota: questa funzione ha ancora tutti gli argomenti
@@ -109,7 +114,8 @@ class Agent:
             q.trainable_weights
         ))
 
-        return q_values, q_losses
+        # return q_values, q_losses
+        return q_loss
 
     '''
     [francesco]
@@ -120,12 +126,11 @@ class Agent:
     def trainingstep_q(self, batch):
         target_values = self.compute_q_targets(batch)
 
-        q1_values, q1_losses = self.trainingstep_single_q(self.q1, batch, target_values, self.q1_optimizer)
-        q2_values, q2_losses = self.trainingstep_single_q(self.q2, batch, target_values, self.q2_optimizer)
+        q1_loss = self.trainingstep_single_q(self.q1, batch, target_values, self.q1_optimizer)
+        q2_loss = self.trainingstep_single_q(self.q2, batch, target_values, self.q2_optimizer)
 
-        q_values = [q1_values, q2_values]
-        q_losses = [q1_losses, q2_losses]
-        return q_values, q_losses
+        q_loss = [q1_loss, q2_loss]
+        return q_loss
 
     '''
     [francesco]
@@ -135,7 +140,7 @@ class Agent:
     per calcolare la perdita secondo le equazioni del paper,
     infine calcola il gradiente della perdita e lo usa per aggiornare i pesi.
 
-    RESTITUISCE: la perdita per ciascuna osservazione,
+    RESTITUISCE: la perdita media,
     per (eventuali futuri, forse) fini statistici
     '''
     def trainingstep_policy(self, batch):
@@ -181,8 +186,8 @@ class Agent:
         ))
 
         # Dal puro punto di vista dell'allenamento, non c'è bisogno di restituire nulla,
-        # restituiamo le perdite della policy per possibili fini statistici
-        return policy_losses
+        # restituiamo la perdita della policy per possibili fini statistici
+        return policy_loss#es
 
     '''
     Operazione base della prossima funzione
@@ -204,13 +209,20 @@ class Agent:
 
     '''
     esegue un singolo passo di training
+    RESTITUISCE: un dizionario con le statistiche restituite
+    dai singoli trainingstep, per (eventuali) fini statistici
     '''
     def trainingstep(self, batch):
-        self.trainingstep_q(batch)
-        self.trainingstep_policy(batch)
+        q_loss = self.trainingstep_q(batch)
+        policy_loss = self.trainingstep_policy(batch)
         self.updatestep_q_targ()
-        # TODO restituire un dizionario con tutti i return value
-        #      dei vari trainingstep, a fini potenzialmente statistici
+        # per l'allenamento in sé non dobbiamo restituire nulla,
+        # per (possibili) fini statistici restituiamo le perdite delle NN
+        return {
+            Q1_LOSS: q_loss[0],
+            Q2_LOSS: q_loss[1],
+            POLICY_LOSS: policy_loss,
+        }
 
     #############################################################
     #################   AUSILIARIE VARIE    #####################

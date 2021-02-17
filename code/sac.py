@@ -120,6 +120,11 @@ class SAC:
         obs = self.env.reset()
         episode_return = 0
         episode_duration = 0
+        # statistiche delle NN
+        q1_avg_loss = 0
+        q2_avg_loss = 0
+        policy_avg_loss = 0
+        number_of_samples_in_avg_losses = 0
         #path
         this_epoch_save_path = self.base_save_path / "ep{}".format(epoch)
         this_epoch_save_path.mkdir()
@@ -168,10 +173,34 @@ class SAC:
                 for j in range(self.training_period):   # il rate step/train deve comunque essere 1:1, anche se facciamo gli allenamenti in "batch" piuttosto che letteralmente 1 a step
                     batch = self.replay_buffer.random_batch(self.batch_size)
                     # training spostato nell'Agent, TODO cancellare questo commento tra un paio di giorni
-                    self.the_agent.trainingstep(batch)
+                    loss_dict = self.the_agent.trainingstep(batch)
+                    # aggiornamento statistiche (update online della media aritmetica)
+                    number_of_samples_in_avg_losses += 1
+                    # (usiamo i backslash backslash per andare a capo)        →→→→→→→→↓
+                    q1_avg_loss += (loss_dict[agent_module.Q1_LOSS] - q1_avg_loss) /  \
+                                         number_of_samples_in_avg_losses
+                    q2_avg_loss += (loss_dict[agent_module.Q2_LOSS] - q2_avg_loss) /  \
+                                         number_of_samples_in_avg_losses
+                    policy_avg_loss += (loss_dict[agent_module.POLICY_LOSS] - policy_avg_loss) /  \
+                                               number_of_samples_in_avg_losses
 
             ### Nell'ultimo timestep di ogni epoch, potremmo voler calcolare e stampare qualche metrica, e fare altre operazioni
             if (t+1)%self.steps_per_epoch==0:
+                # Epoch completata
+
+                # Salviamo le perdite medie di questa epoch
+                self.simple_loss_info_dump(
+                    this_epoch_save_path/"losses.txt",
+                    policy_avg_loss,
+                    q1_avg_loss,
+                    q2_avg_loss
+                )
+                # Importante: poi resettiamo tali statistiche
+                q1_avg_loss = 0
+                q2_avg_loss = 0
+                policy_avg_loss = 0
+                number_of_samples_in_avg_losses = 0
+
                 print("Epoch {}/{} completata".format(epoch, self.epochs))
 
                 epoch = (t+1) // self.steps_per_epoch
@@ -248,6 +277,15 @@ class SAC:
                 if episode_duration >= self.max_episode_duration:
                     done=True
             self.simple_episode_info_dump(base_save_path/"test_ep_stats.txt", episode_duration, episode_return)
+
+    def simple_loss_info_dump(self, logfpath, policy_loss, q1_loss, q2_loss):
+        if not logfpath.exists():
+            # facciamo una riga di intestazione
+            with open(logfpath, 'w') as f:
+                f.write("policy\tq1\tq2\n")
+        # in ogni caso, dumpiamo le info correnti
+        with open(logfpath, 'a') as f:   # deve essere un file di testo
+            f.write("{}\t{}\t{}\n".format(policy_loss, q1_loss, q2_loss))
 
 # se passata al Monitor come argomento video_callable,
 # registra ogni episodio quadrato anziché ogni cubo.
