@@ -78,7 +78,7 @@ VS_CONFIG = {
 }
 
 # ulteriore variante
-VS256_CONFIG = {
+VS128_CONFIG = {
     "buffer_size": 500000,
     "epochs": 175,
     "steps_per_epoch": 1000,
@@ -89,7 +89,7 @@ VS256_CONFIG = {
     "batch_size": 50,
     "save_period": 10,
     "test_eps_no": 1,
-    "hidden_layer_sizes": (256,256),
+    "hidden_layer_sizes": (128,128),
     "use_monitor": True,
 }
 
@@ -111,7 +111,7 @@ CONFIGS = {
     "S": S_CONFIG,
     "XS": XS_CONFIG,
     "VS": VS_CONFIG,
-    "VS256": VS256_CONFIG,
+    "VS128": VS128_CONFIG,
     "T": T_CONFIG,
 }
 
