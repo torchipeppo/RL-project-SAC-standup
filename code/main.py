@@ -128,6 +128,11 @@ parser.add_argument(
     action='store_true',
     help="Specify to exclude recording (and save some time)"
 )
+parser.add_argument(
+    '--dont-save',
+    action='store_true',
+    help="Specify to exclude intermediate saving. Might save some memory usage."
+)
 args = parser.parse_args()
 config = args.config.upper()
 
@@ -135,6 +140,8 @@ config = args.config.upper()
 sac_args = CONFIGS[config]
 if args.dont_record:
     sac_args["use_monitor"] = False
+if args.dont_save:
+    sac_args["save_period"] = 2 * sac_args["epochs"]    # equivale a "mai"
 
 # importiamo sac all'ultimo momento,
 # così se sbagliamo la command line
