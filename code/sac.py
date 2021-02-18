@@ -46,9 +46,8 @@ class SAC:
         self.env.seed(seed)
         self.test_env.seed(seed)
         # Recuperiamo le dimensioni degli spazi d'osservazione e azione (come scalari)
-        # TODO in teoria non serve salvarsele con self., ma me ne occupo post-refactor
-        self.obs_dim = self.env.observation_space.shape[0]
-        self.act_dim = self.env.action_space.shape[0]
+        obs_dim = self.env.observation_space.shape[0]
+        act_dim = self.env.action_space.shape[0]
         # le 5 NN e il repley buffer sono stati spostati nel nuovo modulo:
         self.the_agent = agent_module.Agent(
             self.env.observation_space, self.env.action_space,
@@ -57,20 +56,18 @@ class SAC:
         )
         # Creare il replay buffer
         self.replay_buffer = replay_buffer_module.ReplayBuffer(
-            self.obs_dim, self.act_dim, buffer_size
+            obs_dim, act_dim, buffer_size
         )
         # computo total_steps
         self.epochs = epochs
         self.steps_per_epoch = steps_per_epoch
         self.total_steps = self.steps_per_epoch * self.epochs
-        # optimizers spostati nell'Agent, TODO cancellare commento tra un paio di giorni
         # altri parametri
         self.warmup_steps = warmup_steps
         self.max_episode_duration = max_episode_duration
         self.steps_without_training = steps_without_training
         self.training_period = training_period
         self.batch_size = batch_size
-        # alpha, gamma, tau spostati nell'Agent, TODO cancellare commento tra un paio di giorni
         self.save_period = save_period
         self.test_eps_no = test_eps_no
         # inizializzazione path di salvataggio
@@ -172,7 +169,7 @@ class SAC:
             if t>=self.steps_without_training and t%self.training_period==0:
                 for j in range(self.training_period):   # il rate step/train deve comunque essere 1:1, anche se facciamo gli allenamenti in "batch" piuttosto che letteralmente 1 a step
                     batch = self.replay_buffer.random_batch(self.batch_size)
-                    # training spostato nell'Agent, TODO cancellare questo commento tra un paio di giorni
+                    # le funzioni di training sono prerogativa dell'Agent
                     loss_dict = self.the_agent.trainingstep(batch)
                     # aggiornamento statistiche (update online della media aritmetica)
                     number_of_samples_in_avg_losses += 1

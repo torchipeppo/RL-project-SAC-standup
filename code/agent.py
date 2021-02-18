@@ -6,8 +6,6 @@ e tutte le funzioni che le riguardano, tipo il training.
 Questa classe non è pensata come un modulo stagno,
 SAC potrà accedere a tutti i suoi membri in caso di necessità
 (ma lo farà sempre soltanto in lettura)
-
-TODO Non sono convintissimo del nome, ma sono in tempo a cambiarlo se è.
 '''
 
 import numpy as np

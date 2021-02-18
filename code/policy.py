@@ -24,17 +24,6 @@ class Policy:
         hidden_acti="relu",             #vedi _make_model
         pseudo_output_acti="linear"     #vedi _make_model
     ):
-        # mi salvo i parametri dato che devo clonare quest'oggetto
-        # per fare la policy deterministica
-        # TODO ormai non dovrebbe servire più
-        self._args = {
-            "observation_space": observation_space,
-            "action_space": action_space,
-            "hidden_layer_sizes": hidden_layer_sizes,
-            "hidden_acti": hidden_acti,
-            "pseudo_output_acti": pseudo_output_acti,
-        }
-
         # questo parametro decide se le azioni restituite dalla policy debbano
         # essere campionate dalla distribuzione con le medie e varianze
         # date dalla NN, o se invece debba restituire  direttamente le medie,
@@ -156,14 +145,6 @@ class Policy:
         # prendo solo la prima componente, ma con questa notazione mi assicuro
         # che il tipo di dato rimanga tupla (array, tensore, insomma non diventi scalare)
 
-        # TODO: volendo fare una cosa un filino più elegante si può provare questo:
-        # batch_shape = tf.shape(observations)[0 : -len(self._observation_shape)]
-        # Praticamente, toglie un numero di dimensioni pari alle dimensioni di una singola
-        # osservazione, lasciandoci con la dimensione della batch
-        # (anche se non è monodimensionale).
-        # Tuttavia, vorrei provare prima la versione più semplice che sta qui sopra
-        # e semmai cambiare solo quando abbiamo qualcosa che funziona un po'
-
         # Invoca il modello per calcolare i parametri della distribuzione
         # per ogni osservazione della batch
         means, sigmas = self.means_and_sigmas_model(observations)
@@ -257,7 +238,6 @@ class Policy:
     #  in entrambe le modalità in caso vogliamo passare a @tf.function
     #  per qualsiasi motivo)
     def create_deterministic_policy(self):
-        #twin = Policy(**self._args)     # alla fine sono riuscito a usare deepcopy
         twin = copy.deepcopy(self)
         twin.means_and_sigmas_model = keras.models.clone_model(
             self.means_and_sigmas_model
@@ -326,9 +306,6 @@ RESTITUISCE: il modello così costruito
 # (nel senso di Java/C#, i.e. senza usare self),
 # per cui porto questo metodo fuori dal corpo della classe
 def _make_model(observation_shape, hidden_sizes, action_shape, hidden_acti, pseudo_output_acti):
-    # TODO potremmo aver bisogno del cast_and_concat perché mi pare di capire che le osservazioni siano float64 mentre le azioni float32
-    # (vedi: https://github.com/rail-berkeley/softlearning/blob/master/softlearning/utils/tensorflow.py#L32)
-
     kl = keras.layers
 
     # Crea layer di input

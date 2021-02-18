@@ -116,9 +116,6 @@ def _make_model(observation_shape, action_shape, hidden_sizes, hidden_acti, outp
     input_layers = [kl.Input(shape=observation_shape), kl.Input(shape=action_shape)]
     concatenate_layer = kl.Concatenate()
 
-    # TODO potremmo aver bisogno del cast_and_concat perché mi pare di capire che le osservazioni siano float64 mentre le azioni float32
-    # (vedi: https://github.com/rail-berkeley/softlearning/blob/master/softlearning/utils/tensorflow.py#L32)
-
     # Crea tutte le layer nascoste
     hidden_layers = [kl.Dense(size, activation=hidden_acti) for size in hidden_sizes]
 
