@@ -17,4 +17,4 @@
 
 [ ] esperimenti esperimenti esperimenti esperimenti
 
-[ ] ripulire
+[*] ripulire
