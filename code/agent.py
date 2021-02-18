@@ -1,7 +1,7 @@
 '''
 [francesco]
 Questo modulo contiene gli oggetti per le q e la policy
-e tutte le funzioni che le riguardano, tipo il training.
+e tutte le funzioni che le riguardano, come ad esempio il training.
 
 Questa classe non è pensata come un modulo stagno,
 SAC potrà accedere a tutti i suoi membri in caso di necessità
@@ -60,6 +60,7 @@ class Agent:
     '''
     Il primo passo dell'allenamento delle q,
     calcola i valori da usare come bersagli nell'allenamento
+    (la Q_hat del paper)
     La metto da parte per separare questo passo dal resto
     RESTITUISCE: i detti valori bersaglio
     '''
@@ -71,7 +72,9 @@ class Agent:
 
         # prediciamo le azioni corrispondenti alle osservazioni future
         next_actions, next_logprobs = self.policy.compute_actions_and_logprobs(next_observations)
-        # calcoliamo i valori della q_targ (come minimo delle due, al solito)
+
+        # calcoliamo i valori della q_targ per le coppie osservazione-azione
+        # "future" così ottenute (prendendo il minimo delle due, al solito)
         next_q1_targ_values = self.q1_targ.compute_q_values(next_observations, next_actions)
         next_q2_targ_values = self.q2_targ.compute_q_values(next_observations, next_actions)
         next_q_targ_values = tf.reduce_min((next_q1_targ_values, next_q2_targ_values), axis=0)
@@ -79,7 +82,7 @@ class Agent:
         # applichiamo l'equazione per il soft value
         next_v_values = next_q_targ_values - self.alpha*next_logprobs
 
-        # castiamo per compatibilità con la prossima espressione
+        # cast per compatibilità con la prossima espressione
         dones = tf.cast(dones, next_v_values.dtype)
 
         # equazione per calcolare Q_hat
@@ -92,8 +95,8 @@ class Agent:
     RESTITUISCE: la perdita media,
     per (eventuali futuri, forse) fini statistici
     '''
-    # Nota: questa funzione ha ancora tutti gli argomenti
-    #`perché viene chiamata una volta per q1 e una volta per q2`
+    # Nota: questa funzione prende argomenti anziché usare i valori salvati in self
+    # perché viene chiamata una volta per q1 e una volta per q2
     def trainingstep_single_q(self, q, batch, target_values, q_optimizer):
         # recupera dati dalla batch
         observations = batch[repbuf_module.OBSERVATIONS]
@@ -101,7 +104,7 @@ class Agent:
 
         # applica una loss MSE standard: calcola le predizioni della NN,
         # calcola il MSE rispetto ai bersagli, poi considera la perdita
-        # media e usala per camcolare e applicare i gradienti
+        # media e usala per calcolare e applicare i gradienti
         with tf.GradientTape() as tape:
             q_values = q.compute_q_values(observations, actions)
             q_losses = 0.5 * tf.losses.MSE(y_true=target_values, y_pred=q_values)
@@ -135,7 +138,7 @@ class Agent:
     Effettua un passo di allenamento della policy:
     data una batch di osservazioni, campiona le azioni corrispondenti
     e usa la funzione q e le probabilità di quelle azioni
-    per calcolare la perdita secondo le equazioni del paper,
+    per calcolare la perdita secondo le equazioni per J_pi del paper,
     infine calcola il gradiente della perdita e lo usa per aggiornare i pesi.
 
     RESTITUISCE: la perdita media,
@@ -148,31 +151,21 @@ class Agent:
         # Definiamo la funzione di cui calcolare il gradiente
         # grazie al GradientTape di tf
         with tf.GradientTape() as tape:
-            # campioniamo dalla policy azioni e probabilità relative alla batch corrente
+            # campioniamo dalla policy (stocastica)
+            # azioni e probabilità relative alla batch corrente
             actions, logprobs = self.policy.compute_actions_and_logprobs(observations)
 
-            # calcola il valore di entrambe le funzioni q...
+            # calcola il valore q di ogni coppia osservazione-azione
+            # come minimo delle due stime
             q1_target_values = self.q1.compute_q_values(observations, actions)
             q2_target_values = self.q2.compute_q_values(observations, actions)
-            # e prendi il più piccolo (per ogni osservazione della batch)
             q_target_values = tf.reduce_min((q1_target_values, q2_target_values), axis=0)
 
-            # calcola la perdita di ciascuna coppia osservazione-azione...
+            # calcola la perdita di ciascuna coppia osservazione-azione
+            # applicando l'equazione per J_pi...
             policy_losses = self.alpha*logprobs - q_target_values
-            # ...e la perdita media
+            # ...e poi calcola la perdita media
             policy_loss = tf.nn.compute_average_loss(policy_losses)
-
-        # Questa funzione controlla che le dimensioni dei tensori usati nel calcolo
-        # siano coerenti coi nostri requisiti.
-        # In questo caso, controlliamo che tutti i tensori menzionati abbiano
-        # lo stesso numero di righe e che logprobs e policy_losses abbiano una
-        # sola colonna.
-        # Sembra un check di coerenza importante e semplice da fare.
-        tf.debugging.assert_shapes((
-            (actions, ("R", "A")),
-            (logprobs, ("R", 1)),
-            (policy_losses, ("R", 1))
-        ))
 
         # Calcola il gradiente della perdita rispetto ai pesi della policy
         policy_gradients = tape.gradient(policy_loss, self.policy.trainable_weights)
@@ -191,7 +184,8 @@ class Agent:
     Operazione base della prossima funzione
     RESTITUISCE: None
     '''
-    # Ancora, questa tiene un po' di parametri perché è chiamata per q1 e q2
+    # Ancora, questa prende un po' di parametri anziché usare quelli in self
+    # perché è chiamata per q1 e q2
     def updatestep_single_q_targ(self, q, q_targ):
         for q_weight, q_targ_weight in zip(q.trainable_weights, q_targ.trainable_weights):
             q_targ_weight.assign(self.tau*q_weight + (1.0-self.tau)*q_targ_weight)
@@ -206,7 +200,9 @@ class Agent:
         self.updatestep_single_q_targ(self.q2, self.q2_targ)
 
     '''
-    esegue un singolo passo di training
+    esegue un singolo passo di training,
+    aggiornando tutte le NN
+    vedi le funzioni sopra per i dettagli
     RESTITUISCE: un dizionario con le statistiche restituite
     dai singoli trainingstep, per (eventuali) fini statistici
     '''
@@ -214,7 +210,7 @@ class Agent:
         q_loss = self.trainingstep_q(batch)
         policy_loss = self.trainingstep_policy(batch)
         self.updatestep_q_targ()
-        # per l'allenamento in sé non dobbiamo restituire nulla,
+        # per l'allenamento in sé non abbiamo bisogno di restituire nulla,
         # per (possibili) fini statistici restituiamo le perdite delle NN
         return {
             Q1_LOSS: q_loss[0],

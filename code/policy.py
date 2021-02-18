@@ -28,8 +28,8 @@ class Policy:
         # essere campionate dalla distribuzione con le medie e varianze
         # date dalla NN, o se invece debba restituire  direttamente le medie,
         # per avere un comportamento più deterministico.
-        # in fase di valutazione vogliamo la possibilità di chiedere
-        # alla policy tale comportamento deterministico per valutarla meglio.
+        # questo comportamento deterministico è utile in fase di valutazione
+        # per valutare meglio la policy.
         self._deterministic = False
 
         # questo parametro decide se le azioni
@@ -40,19 +40,14 @@ class Policy:
         # o se invece debbano essere lasciate in [-1,1] per essere scalate
         # in un secondo momento (magari subito prima di passare l'azione
         # a env.step).
-        # PER IL MOMENTO sono per scalare subito, ma dato che
-        # (al momento della scrittura di questo commento) il progetto
-        # è ancora agli inizi potrebbe esserci motivo di cambiare idea,
-        # quindi lascio un controllo booleano per cambiare facilmente
-        # comportamento senza girarsi mezzo modulo.
-        # Nota: questo booleano non dovrebbe essere modificato a runtime,
-        #       serve solo ad essere hardcodato a un valore o all'altro
-        #       in base alle necessità.
+        # questo controllo booleano è stato inserito all'inizio del progetto
+        # per poter passare facilmente dall'una all'altra configurazione,
+        # adesso serve solo a marcare la decisione presa.
         self._scale_immediately = True
 
         # estraggo i parametri rilevanti dagli spazi di osservazione e azione
-        self._observation_shape = observation_space.shape;    # FYI: nel nostro caso è (376,)
-        self._action_shape = action_space.shape;    # FYI: nel nostro caso, è (17,)
+        self._observation_shape = observation_space.shape    # FYI: nel nostro caso è (376,)
+        self._action_shape = action_space.shape    # FYI: nel nostro caso, è (17,)
         # ha senso ricordarsi il "vero" action_range solo se abbiamo
         # intenzione di usarlo per scalare le azioni, altrimenti
         # è meglio far finta che il range sia [-1,1]
@@ -116,7 +111,7 @@ class Policy:
         # applico tale biiettore alla distribuzione
         self.action_distribution = self._clamp_and_maybe_scale_actions_bijector(self.unclamped_action_distribution)
 
-        #fine __init__
+    #fine __init__
 
     '''
     Espone i parametri allenabili della NN (con un paio di alias)
@@ -143,7 +138,8 @@ class Policy:
         # N.B.: assumo batch monodimensionali (quindi NEL NOSTRO CASO una matrice 2D dove ogni riga è un'osservazione)
         batch_shape = tf.shape(observations)[0:1]
         # prendo solo la prima componente, ma con questa notazione mi assicuro
-        # che il tipo di dato rimanga tupla (array, tensore, insomma non diventi scalare)
+        # che il tipo di dato rimanga tupla (o array, o tensore, o qualunque esso sia,
+        # in ogni caso mi assicuro che non diventi scalare)
 
         # Invoca il modello per calcolare i parametri della distribuzione
         # per ogni osservazione della batch
@@ -157,6 +153,7 @@ class Policy:
             # è infinita
             # La riga seguente vuol dire: "la dimensione della tabella delle
             # logprob è la stessa di quella delle medie, tranne che l'ultima dimensione
+            # (nel nostro caso di matrice 2D, il numero di colonne)
             # è 1 invece dell'originale". Questo perché un'azione è rappresentata
             # da tante componenti (17 nel nostro caso) ma ha associata una sola
             # probabilità.
@@ -223,20 +220,6 @@ class Policy:
           ogni volta che se ne vuole una, non si può riutilizzare la stessa.
     RESTITUISCE: la copia profonda deterministica
     '''
-    # [francesco]
-    # Avevo provato a fare questa funzionalità con copy.deepcopy, ma dava problemi.
-    # Allora sono passato a un contextmanager come [softlearning gaussian_policy],
-    # ma risulta incompatibile con la modalità @tf.function, che credevo fosse
-    # necessaria per far funzionare correttamente i biiettori.
-    # Quindi sono tornato al concetto della copia profonda e ho fatto una
-    # versione che non usa deepcopy.
-    # Infine sono anche riuscito a far funzionare deepcopy
-    # semplicemente prendendo a parte che dava problemi (il modello keras)
-    # e clonando quella parte manualmente.
-    # (Poi alla fine pare che @tf.function non sia necessaria,
-    #  ma comunque alla fine credo sia meglio avere qualcosa che funziona
-    #  in entrambe le modalità in caso vogliamo passare a @tf.function
-    #  per qualsiasi motivo)
     def create_deterministic_policy(self):
         twin = copy.deepcopy(self)
         twin.means_and_sigmas_model = keras.models.clone_model(
@@ -306,6 +289,7 @@ RESTITUISCE: il modello così costruito
 # (nel senso di Java/C#, i.e. senza usare self),
 # per cui porto questo metodo fuori dal corpo della classe
 def _make_model(observation_shape, hidden_sizes, action_shape, hidden_acti, pseudo_output_acti):
+
     kl = keras.layers
 
     # Crea layer di input
@@ -326,10 +310,8 @@ def _make_model(observation_shape, hidden_sizes, action_shape, hidden_acti, pseu
     common = pseudo_output_layer(common)
 
     # Separa lo pseudo output a metà: le medie da una parte, le deviazioni dall'altra
-    # split_a_layer = lambda x: tf.split(x, num_or_size_splits=2, axis=-1)
     means, sigmas_noact = kl.Lambda(split_a_layer)(common)
     # Applica una attivazione softplus alle deviazioni standard
-    # softplus_epsilon = lambda x: tf.math.softplus(x)+0.00001
     sigmas = kl.Lambda(softplus_epsilon)(sigmas_noact)
 
     # Crea il modello finale

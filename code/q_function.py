@@ -24,8 +24,8 @@ class Q_Function:
         # estraggo i parametri rilevanti dagli spazi di osservazione e azione
         # (stavolta ci servono solo le shape, lascio comunque tutto lo space come
         #  argomento per "coerenza" con l'API della Policy)
-        self._observation_shape = observation_space.shape;    # FYI: nel nostro caso è (376,)
-        self._action_shape = action_space.shape;    # FYI: nel nostro caso, è (17,)
+        self._observation_shape = observation_space.shape    # FYI: nel nostro caso è (376,)
+        self._action_shape = action_space.shape    # FYI: nel nostro caso, è (17,)
 
         # crea il modello
         self.q_model = _make_model(
@@ -47,8 +47,8 @@ class Q_Function:
         return self.trainable_weights
 
     '''
-    Data una batch di osservazioni e di azioni, RESTITUISCE i valori q
-    corrispondenti a ciascuna coppia osservazione-azione.
+    Data una batch di osservazioni e di azioni,
+    RESTITUISCE i valori q corrispondenti a ciascuna coppia osservazione-azione.
     '''
     def compute_q_values(self, observations, actions):
         vals = self.q_model((observations, actions))
@@ -105,6 +105,7 @@ Crea una rete neurale che prende in ingresso una (batch di) coppia
 osservazione azione e restutisce il (batch di) valore Q corrispondente
 
 I parametri solo tali e quali a quelli della policy
+(ma l'ordine è leggermente diverso!)
 
 RESTITUISCE: la rete neurale
 '''

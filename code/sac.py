@@ -14,7 +14,7 @@ import path_constants
 class SAC:
     def __init__(
         self,
-        env_name = "HumanoidStandup-v2",         # nome dell'environment openaiGYM da usare
+        env_name = "HumanoidStandup-v2",         # nome dell'environment OpenAI Gym da usare
         seed = 14383421,             # seed per tutte le componenti random
         buffer_size = 1000000,      # dimensione del replay buffer
         epochs = 100,           # durata del training in epoch
@@ -48,7 +48,7 @@ class SAC:
         # Recuperiamo le dimensioni degli spazi d'osservazione e azione (come scalari)
         obs_dim = self.env.observation_space.shape[0]
         act_dim = self.env.action_space.shape[0]
-        # le 5 NN e il repley buffer sono stati spostati nel nuovo modulo:
+        # le 5 NN sono gestite in un modulo a parte:
         self.the_agent = agent_module.Agent(
             self.env.observation_space, self.env.action_space,
             hidden_layer_sizes,
@@ -73,13 +73,13 @@ class SAC:
         # inizializzazione path di salvataggio
         '''
         ATTENZIONE!
-        Se Alessio o chiunque altro usa questo codice,
+        Se qualcun altro vuole usare questo codice,
         deve creare un file path_constants.py e definire al suo interno
         un oggetto Path in una variabile REPO_ROOT
         che contenga il path assoluto della radice della repo
         SULLA SUA MACCHINA.
-        Non carico quel file su GitHub appunto perché riguarda informazioni
-        specifiche della macchina usata.
+        Non traccio quel file su git (e quindi neanche lo carico su GitHub)
+        appunto perché riguarda informazioni specifiche della macchina usata.
         '''
         now = datetime.datetime.now()
         unique_subdir_name = "{:04d}_{:02d}_{:02d}_{:02d}_{:02d}_{:02d}".format(
@@ -135,43 +135,43 @@ class SAC:
             if t%100==0:
                 print("Epoch {}/{} Step {}/{}".format(epoch, self.epochs, t, self.total_steps))
 
-            ### Ottieni la prossima azione da eseguire.
+            # Ottieni la prossima azione da eseguire.
             if t > self.warmup_steps:
-                # actions, _ = policy.compute_actions_and_logprobs(obs)    # vediamo che succede usando il metodo che già ho
-                # # è stata una brutta idea
-                # act = actions[0].numpy()
+                # nella fase iniziale scegli a caso per esplorare
                 act = self.the_agent.compute_action(obs)
             else:
+                # poi passa alla policy (stocastica)
                 act = self.env.action_space.sample()
 
-            ### Esegui una azione
+            # Esegui una azione
             obs2, rew, done, _ = self.env.step(act)
             episode_return += rew
             episode_duration += 1
 
-            ### il done da salvare nel replay buffer deve ignorare la terminazione causata dal tempo limite
+            # il done da salvare nel replay buffer deve ignorare la terminazione causata dal tempo limite
             stored_done = False if episode_duration==self.max_episode_duration else done
 
-            ### salviamo questo step nel buffer
+            # salviamo questo step nel buffer
             self.replay_buffer.store(obs, obs2, act, rew, stored_done)
 
-            ### aggiornamento osservazione corrente
+            # aggiornamento osservazione corrente
             obs = obs2
 
-            ### fine episodio
+            # gestione fine episodio
             if done or episode_duration>=self.max_episode_duration:
                 self.simple_episode_info_dump(this_epoch_save_path/"ep_stats.txt", episode_duration, episode_return)
                 obs = self.env.reset()
                 episode_return = 0
                 episode_duration = 0
 
-            ### Allena le reti neurali N volte ogni N step
+            # Allena le reti neurali N volte ogni N step
+            # (ma salta l'allenamento negli step iniziali)
             if t>=self.steps_without_training and t%self.training_period==0:
                 for j in range(self.training_period):   # il rate step/train deve comunque essere 1:1, anche se facciamo gli allenamenti in "batch" piuttosto che letteralmente 1 a step
                     batch = self.replay_buffer.random_batch(self.batch_size)
                     # le funzioni di training sono prerogativa dell'Agent
                     loss_dict = self.the_agent.trainingstep(batch)
-                    # aggiornamento statistiche (update online della media aritmetica)
+                    # aggiornamento statistiche (semplice update online della media aritmetica)
                     number_of_samples_in_avg_losses += 1
                     # (usiamo i backslash backslash per andare a capo)        →→→→→→→→↓
                     q1_avg_loss += (loss_dict[agent_module.Q1_LOSS] - q1_avg_loss) /  \
@@ -181,11 +181,13 @@ class SAC:
                     policy_avg_loss += (loss_dict[agent_module.POLICY_LOSS] - policy_avg_loss) /  \
                                                number_of_samples_in_avg_losses
 
-            ### Nell'ultimo timestep di ogni epoch, potremmo voler calcolare e stampare qualche metrica, e fare altre operazioni
+            # Gestione fine epoch, in cui salviamo qualche metrica
+            # e facciamo episodi di test
             if (t+1)%self.steps_per_epoch==0:
                 # Epoch completata
 
                 # Salviamo le perdite medie di questa epoch
+                # (*sperando* di avere abbastanza tempo da poterci fare qualcosa)
                 self.simple_loss_info_dump(
                     this_epoch_save_path/"losses.txt",
                     policy_avg_loss,
@@ -205,19 +207,13 @@ class SAC:
                 # salviamo le NN ogni tanto
                 if epoch%self.save_period==0 or epoch==self.epochs:  # salviamo sempre all'ultima epoch
                     print("    Salvataggio in corso...")
-                    # self.save_everything(this_epoch_save_path/"models",  "_ep{}".format(epoch-1))
-                    # -1 perché adesso epoch è aggiornato all'epoch successiva,
-                    # ma questo salvataggio riguarda quella appena conclusa.
-                    # stesso motivo per cui non abbiamo ancora aggiornato
-                    # this_epoch_save_path.
-                    ########
-                    # mi sono accorto che devo salvare solo i modelli più recenti,
+                    # salvo solo i modelli più recenti,
                     # altrimenti esaurisco lo spazio su disco
                     self.save_everything(self.base_save_path/"models",  "")
                     # faccio in modo di dare lo stesso nome, così open("wb")
                     # sovrascrive
 
-                # facciamo dei test col modello deterministico ogni tanto
+                # facciamo dei test col modello deterministico
                 self.do_tests(this_epoch_save_path)
 
                 # aggiornamento path
@@ -241,6 +237,7 @@ class SAC:
             save_path.mkdir()
         with open(save_path/"replaybuffer{}.pkl".format(suffix), "wb") as f:
             pickle.dump(self.replay_buffer, f)
+        # le NN sono prerogativa dell'Agent
         self.the_agent.save_all_models(save_path, suffix)
 
     # in realtà questa è praticamente "statica"
@@ -264,9 +261,6 @@ class SAC:
             episode_duration = 0
             done = False
             while not done:
-                # actions, _ = deterministic_policy.compute_actions_and_logprobs(obs)    # vediamo che succede usando il metodo che già ho
-                # # è stata una brutta idea
-                # act = actions[0].numpy()
                 act = deterministic_policy.compute_action(obs)
                 obs, rew, done, _ = self.test_env.step(act)
                 episode_return += rew
@@ -275,6 +269,7 @@ class SAC:
                     done=True
             self.simple_episode_info_dump(base_save_path/"test_ep_stats.txt", episode_duration, episode_return)
 
+    # pure questa è altrettanto "statica"
     def simple_loss_info_dump(self, logfpath, policy_loss, q1_loss, q2_loss):
         if not logfpath.exists():
             # facciamo una riga di intestazione
@@ -295,5 +290,8 @@ def capped_quadratic_video_schedule(episode_id):
 
 
 if __name__=="__main__":
+    # semplice testing
     sac = SAC(epochs=1, steps_per_epoch=1000, test_eps_no=1)
     sac.go_train()
+
+    # (adesso il suo ruolo è coperto dall'opzione T main)
