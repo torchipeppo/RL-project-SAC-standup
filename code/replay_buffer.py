@@ -1,5 +1,4 @@
 '''
-[francesco]
 Modulo per il replay buffer
 
 I suoi campi sono i seguenti:

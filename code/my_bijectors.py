@@ -3,7 +3,6 @@ import tensorflow_probability as tfp
 from tensorflow_probability.python.internal import dtype_util
 
 """
-[francesco]
 Un biiettore la cui operazione forward ACCETTA UN PARAMETRO `shift`
 e restituisce `y = x+shift`.
 Necessario in quanto il normale biiettore Shift richiede di
@@ -36,7 +35,6 @@ class ParametricShift(tfp.bijectors.Bijector):
 
 
 '''
-[francesco]
 Un biiettore la cui operazione forward ACCETTA UN PARAMETRO `scale`
 e restituisce `y = x*scale`.
 Necessario per le stesse ragioni di ParametricShift.

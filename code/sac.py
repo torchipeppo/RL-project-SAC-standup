@@ -276,7 +276,7 @@ class SAC:
             with open(logfpath, 'w') as f:
                 f.write("policy\tq1\tq2\n")
         # in ogni caso, dumpiamo le info correnti
-        with open(logfpath, 'a') as f:   # deve essere un file di testo
+        with open(logfpath, 'a') as f:       # deve essere un file di testo
             f.write("{}\t{}\t{}\n".format(policy_loss, q1_loss, q2_loss))
 
 # se passata al Monitor come argomento video_callable,

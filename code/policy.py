@@ -1,5 +1,4 @@
 '''
-[francesco]
 Modulo per una policy gaussiana multivariata
 
 Proprietà/Metodi rilevanti:

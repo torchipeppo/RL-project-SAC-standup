@@ -1,5 +1,4 @@
 '''
-[francesco]
 Modulo per una funzione q
 
 Proprietà/Metodi rilevanti:

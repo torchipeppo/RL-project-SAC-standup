@@ -1,5 +1,3 @@
-# [francesco]
-
 # c'è bisogno di importare un file nella cartella "code",
 # quindi devo aggiungerla al path di python
 # (l'operazione è locale per questo programma soltanto)

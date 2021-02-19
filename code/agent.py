@@ -1,5 +1,4 @@
 '''
-[francesco]
 Questo modulo contiene gli oggetti per le q e la policy
 e tutte le funzioni che le riguardano, come ad esempio il training.
 
@@ -119,7 +118,6 @@ class Agent:
         return q_loss
 
     '''
-    [francesco]
     Effettua un passo di allenamento di entrambe le funzioni q
     RESTITUISCE: valori calcolati e perdite di entrambe le q (vedi trainingstep_single_q),
     per (eventuali futuri, forse) fini statistici
@@ -134,7 +132,6 @@ class Agent:
         return q_loss
 
     '''
-    [francesco]
     Effettua un passo di allenamento della policy:
     data una batch di osservazioni, campiona le azioni corrispondenti
     e usa la funzione q e le probabilità di quelle azioni
@@ -191,7 +188,6 @@ class Agent:
             q_targ_weight.assign(self.tau*q_weight + (1.0-self.tau)*q_targ_weight)
 
     '''
-    [francesco]
     Esegue un passo di aggiornamento delle q_targ, tramite media esponenziale mobile
     RESTITUISCE: None
     '''

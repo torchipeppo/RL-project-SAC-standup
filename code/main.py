@@ -5,7 +5,7 @@ Accetta da command line un argomento che indica
 quale config usare.
 '''
 
-# import sac as sac_module   # non qui, vedi verso la fine
+# import sac as sac_module     # non qui, vedi verso la fine
 import argparse
 
 # definiamo un po' di dizionari che corrispondono
